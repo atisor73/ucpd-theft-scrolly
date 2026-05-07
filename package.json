@@ -1,0 +1,24 @@
+{
+  "name": "crime-map-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "sync-data": "node scripts/sync-data.mjs"
+  },
+  "dependencies": {
+    "d3": "^7.9.0",
+    "maplibre-gl": "4.7.1"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "3.1.2",
+    "svelte": "4.2.19",
+    "vite": "5.4.19"
+  }
+}
