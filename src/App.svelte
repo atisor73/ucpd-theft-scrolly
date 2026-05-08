@@ -9,7 +9,10 @@
 <script>
   import { onMount, tick } from 'svelte';
   import maplibregl from 'maplibre-gl';
+  import MapOverlay from './components/MapOverlay.svelte';
+  import StoryPanel from './components/StoryPanel.svelte';
   import { incidentsToGeoJson, loadIncidents, loadOptionalGeoJson } from './lib/loadData.js';
+  import { storyChapters } from './lib/storyChapters.js';
   import {
     BOUNDARY_LINE_COLOR,
     BUILDING_FILL_COLOR,
@@ -19,7 +22,6 @@
     HIGHLIGHT_FILL_COLOR,
     HIGHLIGHT_LINE_COLOR,
     REGENSTEIN_BUILDING_ID,
-    REGENSTEIN_BUILDING_NAME,
     STUDY_BOUNDS_ARRAY,
     UNKNOWN_CATEGORY,
     createBoundsFeature
@@ -28,9 +30,160 @@
   const fallbackBounds = createBoundsFeature();
   const emptyFeatureCollection = { type: 'FeatureCollection', features: [] };
   const handAssetPaths = ['/assets/hand1.svg', '/assets/hand2.svg', '/assets/hand3.svg', '/assets/hand4.svg'];
+  const merchandiseAssetPath = '/assets/merchandise.svg';
   const INTRO_TARGET_HANDS_PER_FRAME = 4;
-  const INTRO_HAND_FRAME_MS = 750;
-  const INTRO_HAND_LIFETIME_MS = 520;
+  const INTRO_HAND_FRAME_MS = 500; //750;
+  const INTRO_HAND_LIFETIME_MS = 300; //520;
+  const AGGREGATE_HAND_MIN_SIZE = 9;
+  const AGGREGATE_HAND_MAX_SIZE = 30;
+  const MERCHANDISE_ICON_MIN_SIZE = 15;
+  const MERCHANDISE_ICON_MAX_SIZE = 35;
+  const BIKE_ICON_MIN_SIZE = 18;
+  const BIKE_ICON_MAX_SIZE = 42;
+  const CAR_ICON_MIN_SIZE = 25;
+  const CAR_ICON_MAX_SIZE = 25;
+  const BAG_ICON_MIN_SIZE = 13;
+  const BAG_ICON_MAX_SIZE = 20;
+  const WALLET_ICON_MIN_SIZE = 20;
+  const WALLET_ICON_MAX_SIZE = 20;
+  const TECH_ICON_MIN_SIZE = 15;
+  const TECH_ICON_MAX_SIZE = 25;
+  const PACKAGE_ICON_MIN_SIZE = 17;
+  const PACKAGE_ICON_MAX_SIZE = 38;
+  const CLOTHING_JEWELRY_ICON_MIN_SIZE = 17;
+  const CLOTHING_JEWELRY_ICON_MAX_SIZE = 38;
+  const TOOL_ICON_MIN_SIZE = 17;
+  const TOOL_ICON_MAX_SIZE = 40;
+  const MISC_ICON_MIN_SIZE = 16;
+  const MISC_ICON_MAX_SIZE = 36;
+  const MERCH_CALLOUT_BOX_WIDTH = 168;
+  const MERCH_CALLOUT_BOX_HEIGHT = 76;
+  const jewelryPattern = /(jewel|ring|necklace|bracelet|earring|watch)/i;
+  const merchandiseHotspotDefs = [
+    {
+      id: 'walgreens-plaza',
+      title: 'Walgreens / Hyde Park Plaza',
+      locationNames: ['Walgreens', "Trader Joe's"],
+      buildingIds: [821453],
+      longitude: -87.5891,
+      latitude: 41.79542,
+      offsetX: 0,
+      offsetY: +92
+    },
+    {
+      id: 'target',
+      title: 'Target',
+      locationNames: ['Target'],
+      buildingIds: [462849],
+      longitude: -87.59306282,
+      latitude: 41.79955044,
+      offsetX: 0,
+      offsetY: -180
+    },
+    {
+      id: 'cvs',
+      title: 'CVS on 53rd',
+      locationNames: ['CVS'],
+      buildingIds: [867667],
+      longitude: -87.59614964,
+      latitude: 41.79951603,
+      offsetX: -150,
+      offsetY: -180
+    }
+  ];
+  const HOTSPOT_SCENES = {
+    bikes: {
+      category: 'Bikes & E-scooters',
+      assetPaths: ['/assets/bike1.svg', '/assets/bike2.svg'],
+      previewGlyphs: ['/assets/bike2.svg', '/assets/bike1.svg'],
+      panelTitle: 'Bike and scooter reports',
+      uniqueLabel: 'unique bike and scooter locations',
+      hotspotLabel: 'bike/scooter',
+      minSize: BIKE_ICON_MIN_SIZE,
+      maxSize: BIKE_ICON_MAX_SIZE
+    },
+    cars: {
+      category: 'Car & Car parts',
+      assetPaths: ['/assets/car1.svg', '/assets/car2.svg'],
+      previewGlyphs: ['/assets/car2.svg', '/assets/car1.svg'],
+      panelTitle: 'Car and car-part reports',
+      uniqueLabel: 'unique vehicle locations',
+      hotspotLabel: 'car/car-part',
+      minSize: CAR_ICON_MIN_SIZE,
+      maxSize: CAR_ICON_MAX_SIZE
+    },
+    bags: {
+      category: 'Bags',
+      assetPaths: ['/assets/bag.svg'],
+      previewGlyphs: ['/assets/bag.svg', '/assets/bag.svg'],
+      panelTitle: 'Bag theft reports',
+      uniqueLabel: 'unique bag-theft locations',
+      hotspotLabel: 'bag',
+      minSize: BAG_ICON_MIN_SIZE,
+      maxSize: BAG_ICON_MAX_SIZE
+    },
+    wallets: {
+      category: 'Wallet, Credit cards, Cash',
+      assetPaths: ['/assets/wallet.svg'],
+      previewGlyphs: ['/assets/wallet.svg', '/assets/wallet.svg'],
+      panelTitle: 'Wallet and cash reports',
+      uniqueLabel: 'unique wallet/cash locations',
+      hotspotLabel: 'wallet/cash',
+      minSize: WALLET_ICON_MIN_SIZE,
+      maxSize: WALLET_ICON_MAX_SIZE
+    },
+    tech: {
+      category: 'Tech',
+      assetPaths: ['/assets/device.svg'],
+      previewGlyphs: ['/assets/device.svg', '/assets/device.svg'],
+      panelTitle: 'Tech theft reports',
+      uniqueLabel: 'unique tech-theft locations',
+      hotspotLabel: 'tech',
+      minSize: TECH_ICON_MIN_SIZE,
+      maxSize: TECH_ICON_MAX_SIZE,
+      zoom: 14.9
+    },
+    packages: {
+      category: 'Packages & Food delivery',
+      assetPaths: ['/assets/package.svg'],
+      previewGlyphs: ['/assets/package.svg', '/assets/package.svg'],
+      panelTitle: 'Package and delivery reports',
+      uniqueLabel: 'unique package/delivery locations',
+      hotspotLabel: 'package/delivery',
+      minSize: PACKAGE_ICON_MIN_SIZE,
+      maxSize: PACKAGE_ICON_MAX_SIZE
+    },
+    clothingJewelry: {
+      category: 'Clothing & Jewelry',
+      previewGlyphs: ['/assets/jacket.svg', '/assets/ring.svg'],
+      panelTitle: 'Clothing and jewelry reports',
+      uniqueLabel: 'unique clothing/jewelry locations',
+      hotspotLabel: 'clothing/jewelry',
+      minSize: CLOTHING_JEWELRY_ICON_MIN_SIZE,
+      maxSize: CLOTHING_JEWELRY_ICON_MAX_SIZE
+    },
+    tools: {
+      category: 'Tools',
+      assetPaths: ['/assets/hammer1.svg', '/assets/hammer2.svg'],
+      previewGlyphs: ['/assets/hammer2.svg', '/assets/hammer1.svg'],
+      panelTitle: 'Tool theft reports',
+      uniqueLabel: 'unique tool-theft locations',
+      hotspotLabel: 'tool',
+      minSize: TOOL_ICON_MIN_SIZE,
+      maxSize: TOOL_ICON_MAX_SIZE
+    },
+    miscellaneous: {
+      category: 'Miscellaneous',
+      assetPaths: handAssetPaths,
+      previewGlyphs: ['/assets/hand2.svg', '/assets/hand4.svg'],
+      panelTitle: 'Miscellaneous reports',
+      uniqueLabel: 'unique miscellaneous locations',
+      hotspotLabel: 'miscellaneous',
+      minSize: MISC_ICON_MIN_SIZE,
+      maxSize: MISC_ICON_MAX_SIZE
+    }
+  };
+  const HOTSPOT_SCENE_IDS = new Set(Object.keys(HOTSPOT_SCENES));
   const timelineFormatter = new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
@@ -45,6 +198,7 @@
     boundary: 'study-boundary',
     buildings: 'study-buildings',
     uchicagoBuildings: 'uchicago-buildings',
+    merchandiseHighlights: 'merchandise-highlights',
     incidents: 'theft-incidents'
   };
 
@@ -57,59 +211,10 @@
     uchicagoBuildingsLine: 'uchicago-buildings-line',
     buildingHighlightFill: 'study-building-highlight-fill',
     buildingHighlightLine: 'study-building-highlight-line',
+    merchandiseHighlightFill: 'merchandise-highlight-fill',
+    merchandiseHighlightLine: 'merchandise-highlight-line',
     incidents: 'theft-incidents-layer'
   };
-
-  const storyChapters = [
-    {
-      id: 'intro',
-      kicker: ' ',
-      title: 'May 2025 - May 2026 UChicago Crime Data',
-      body:
-        'The opening view is meant to feel alive: a few illustrated hands wander through Hyde Park using paths sampled from the theft coordinates.',
-      graphic: 'lede'
-    },
-    {
-      id: 'buildings',
-      kicker: 'Context',
-      title: 'Keep the base map clean for now',
-      body:
-        'The building source is loaded, but the full footprint layer stays hidden. That keeps the landing view lighter while preserving the option to highlight one building or a selected group later.',
-      graphic: 'stats'
-    },
-    {
-      id: 'regenstein',
-      kicker: 'Anchor',
-      title: 'Call out Regenstein directly',
-      body:
-        'Instead of manually hunting a polygon by eye, the map highlights Regenstein from the building attributes. In your current file that building is identified by its `BLDG_ID` and `BLDG_NAME1` fields.',
-      graphic: 'regenstein'
-    },
-    {
-      id: 'categories',
-      kicker: 'Incidents',
-      title: 'What gets taken most often',
-      body:
-        'Once the incidents appear, the strongest pattern is category mix. Merchandise dominates this dataset, while bikes, wallets, and tech items form the next most visible clusters.',
-      graphic: 'categories'
-    },
-    {
-      id: 'tech',
-      kicker: 'Filter',
-      title: 'Zoom into tech thefts',
-      body:
-        'A focused chapter can filter the points to a single category and tighten the map to the campus core. That makes it easier to stage a narrative around a specific kind of theft.',
-      graphic: 'tech'
-    },
-    {
-      id: 'bikes',
-      kicker: 'Filter',
-      title: 'Then compare bikes and scooters',
-      body:
-        'You can keep adding chapters like this: each scroll step can update filters, zoom, building emphasis, labels, or hand visibility without changing the underlying data source.',
-      graphic: 'bikes'
-    }
-  ];
 
   let mapContainer;
   let map;
@@ -118,22 +223,21 @@
   let incidents = [];
   let buildings = emptyFeatureCollection;
   let uchicagoBuildings = emptyFeatureCollection;
+  let merchandiseHighlightBuildings = emptyFeatureCollection;
   let boundary = emptyFeatureCollection;
   let introHands = [];
+  let aggregateHands = [];
+  let merchandiseHands = [];
+  let hotspotHandsByScene = {};
+  let hotspotStats = {};
+  let visibleHands = [];
+  let merchandiseCallouts = [];
+  let visibleCallouts = [];
   let introTimeline = [];
   let mapLoaded = false;
-  let handsEnabled = true;
+  let activeHandScene = 'intro';
   let activeChapterId = 'intro';
   let chapterRefs = [];
-  let regensteinBounds = null;
-  let categoryMap = {};
-  let categoryCounts = [];
-  let topCategories = [];
-  let maxCategoryCount = 1;
-  let techCount = 0;
-  let bikeCount = 0;
-  let merchandiseCount = 0;
-  let activeChapter = storyChapters[0];
   let introMonthYearLabel = '';
   let introTimelineProgress = 0;
   let introTimelineDayLabel = '';
@@ -168,11 +272,6 @@
         buildings = loadedBuildings;
         uchicagoBuildings = loadedUchicagoBuildings;
 
-        const regensteinFeature = loadedBuildings.features?.find(
-          (feature) => feature.properties?.BLDG_ID === REGENSTEIN_BUILDING_ID
-        );
-        regensteinBounds = regensteinFeature ? getFeatureBounds(regensteinFeature) : null;
-
         map = new maplibregl.Map({
           container: mapContainer,
           style: CARTO_POSITRON_STYLE,
@@ -192,10 +291,20 @@
           setupMapLayers();
           syncMapData();
           introTimeline = createIntroTimeline(loadedIncidents);
+          aggregateHands = createAggregateHands(loadedIncidents);
+          merchandiseHands = createMerchandiseHands(loadedIncidents);
+          hotspotHandsByScene = Object.fromEntries(
+            Object.entries(HOTSPOT_SCENES).map(([sceneId, scene]) => [
+              sceneId,
+              createHotspotHands(loadedIncidents, sceneId, scene)
+            ])
+          );
+          merchandiseHighlightBuildings = createMerchandiseHighlightBuildings(loadedBuildings);
+          merchandiseCallouts = createMerchandiseCallouts(loadedIncidents);
           applyIntroFrame(0);
           mapLoaded = true;
           applyChapterState(activeChapterId);
-          projectIntroHands();
+          refreshVisibleHands();
           startIntroPlayback();
 
           popup = new maplibregl.Popup({
@@ -241,11 +350,11 @@
           });
 
           map.on('move', () => {
-            projectIntroHands();
+            refreshVisibleHands();
           });
 
           map.on('resize', () => {
-            projectIntroHands();
+            refreshVisibleHands();
           });
 
           loading = false;
@@ -281,13 +390,12 @@
       let frameIndex = 0;
 
       introTimer = window.setInterval(() => {
-        if (cancelled || !handsEnabled || !introTimeline.length) {
+        if (cancelled || activeHandScene !== 'intro' || !introTimeline.length) {
           return;
         }
 
         frameIndex += 1;
         applyIntroFrame(frameIndex);
-        projectIntroHands();
       }, INTRO_HAND_FRAME_MS);
     }
   });
@@ -444,6 +552,188 @@
     });
   }
 
+  function createAggregateHands(allIncidents) {
+    if (!allIncidents.length) {
+      return [];
+    }
+
+    const groupedHands = new Map();
+
+    allIncidents.forEach((incident, index) => {
+      if (!Number.isFinite(incident.longitude) || !Number.isFinite(incident.latitude)) {
+        return;
+      }
+
+      const roundedLongitude = Number(incident.longitude.toFixed(5));
+      const roundedLatitude = Number(incident.latitude.toFixed(5));
+      const key = `${roundedLatitude}|${roundedLongitude}`;
+
+      if (!groupedHands.has(key)) {
+        groupedHands.set(key, {
+          id: `aggregate-${key}`,
+          key,
+          longitude: roundedLongitude,
+          latitude: roundedLatitude,
+          count: 0,
+          assetPath:
+            handAssetPaths[Math.floor(stableUnit(`aggregate-${key}`) * handAssetPaths.length)] ||
+            handAssetPaths[0],
+          rotation: -12 + stableUnit(`rotation-${key}`) * 24,
+          animationDurationMs: 480,
+          animationDelayMs: Math.round(stableUnit(`delay-${key}`) * 220),
+          mode: 'aggregate',
+          firstIndex: index
+        });
+      }
+
+      const hand = groupedHands.get(key);
+      hand.count += 1;
+      hand.firstIndex = Math.min(hand.firstIndex ?? index, index);
+    });
+
+    const aggregateList = [...groupedHands.values()].sort((left, right) => {
+      if (right.count !== left.count) {
+        return right.count - left.count;
+      }
+
+      return (left.firstIndex ?? 0) - (right.firstIndex ?? 0);
+    });
+
+    const maxCount = aggregateList[0]?.count || 1;
+
+    return aggregateList.map((hand) => {
+      const scale = Math.sqrt(hand.count / maxCount);
+
+      return {
+        ...hand,
+        size: AGGREGATE_HAND_MIN_SIZE + scale * (AGGREGATE_HAND_MAX_SIZE - AGGREGATE_HAND_MIN_SIZE),
+        opacity: 1 //0.5 + scale * 0.38
+      };
+    });
+  }
+
+  function createMerchandiseHands(allIncidents) {
+    const merchandiseIncidents = allIncidents.filter((incident) => incident.itemCategory === 'Merchandise');
+    const hotspotCounts = new Map();
+
+    merchandiseIncidents.forEach((incident) => {
+      const roundedLongitude = Number(incident.longitude.toFixed(5));
+      const roundedLatitude = Number(incident.latitude.toFixed(5));
+      const hotspotKey = `${roundedLatitude}|${roundedLongitude}`;
+      hotspotCounts.set(hotspotKey, (hotspotCounts.get(hotspotKey) || 0) + 1);
+    });
+
+    const maxCount = Math.max(...hotspotCounts.values(), 1);
+
+    return merchandiseIncidents.map((incident, index) => {
+      const roundedLongitude = Number(incident.longitude.toFixed(5));
+      const roundedLatitude = Number(incident.latitude.toFixed(5));
+      const hotspotKey = `${roundedLatitude}|${roundedLongitude}`;
+      const count = hotspotCounts.get(hotspotKey) || 1;
+      const scale = Math.sqrt(count / maxCount);
+
+      return {
+        id: `merchandise-${incident.id}-${index}`,
+        assetPath: merchandiseAssetPath,
+        size: MERCHANDISE_ICON_MIN_SIZE + scale * (MERCHANDISE_ICON_MAX_SIZE - MERCHANDISE_ICON_MIN_SIZE),
+        rotation: 0,
+        animationDurationMs: 420,
+        animationDelayMs: Math.round(stableUnit(`merch-delay-${incident.id}-${index}`) * 180),
+        mode: 'merchandise',
+        hotspotCount: count,
+        longitude: incident.longitude,
+        latitude: incident.latitude,
+        itemCategory: incident.itemCategory,
+        itemStolen: incident.itemStolen,
+        locationName: incident.locationName,
+        location: incident.location,
+        validatedAddress: incident.validatedAddress
+      };
+    });
+  }
+
+  function assetPathForHotspotIncident(sceneId, scene, incident, index) {
+    if (sceneId === 'clothingJewelry') {
+      return jewelryPattern.test(incident.itemStolen || '') ? '/assets/ring.svg' : '/assets/jacket.svg';
+    }
+
+    const assetPaths = scene.assetPaths?.length ? scene.assetPaths : handAssetPaths;
+    const assetIndex = Math.min(
+      assetPaths.length - 1,
+      Math.floor(stableUnit(`${sceneId}-asset-${incident.id}-${index}-${incident.itemStolen || ''}`) * assetPaths.length)
+    );
+
+    return assetPaths[assetIndex] || assetPaths[0];
+  }
+
+  function createHotspotHands(allIncidents, sceneId, scene) {
+    const sceneIncidents = allIncidents.filter((incident) => incident.itemCategory === scene.category);
+    const hotspotCounts = new Map();
+
+    sceneIncidents.forEach((incident) => {
+      const roundedLongitude = Number(incident.longitude.toFixed(5));
+      const roundedLatitude = Number(incident.latitude.toFixed(5));
+      const hotspotKey = `${roundedLatitude}|${roundedLongitude}`;
+      hotspotCounts.set(hotspotKey, (hotspotCounts.get(hotspotKey) || 0) + 1);
+    });
+
+    const maxCount = Math.max(...hotspotCounts.values(), 1);
+
+    return sceneIncidents.map((incident, index) => {
+      const roundedLongitude = Number(incident.longitude.toFixed(5));
+      const roundedLatitude = Number(incident.latitude.toFixed(5));
+      const hotspotKey = `${roundedLatitude}|${roundedLongitude}`;
+      const count = hotspotCounts.get(hotspotKey) || 1;
+      const scale = Math.sqrt(count / maxCount);
+
+      return {
+        id: `${sceneId}-${incident.id}-${index}`,
+        assetPath: assetPathForHotspotIncident(sceneId, scene, incident, index),
+        size: scene.minSize + scale * (scene.maxSize - scene.minSize),
+        rotation: 0,
+        animationDurationMs: 420,
+        animationDelayMs: Math.round(stableUnit(`${sceneId}-delay-${incident.id}-${index}`) * 180),
+        mode: 'category-hotspot',
+        hotspotCount: count,
+        hotspotLabel: scene.hotspotLabel,
+        longitude: incident.longitude,
+        latitude: incident.latitude,
+        itemCategory: incident.itemCategory,
+        itemStolen: incident.itemStolen,
+        locationName: incident.locationName,
+        location: incident.location,
+        validatedAddress: incident.validatedAddress
+      };
+    });
+  }
+
+  function createMerchandiseHighlightBuildings(allBuildings) {
+    const selectedIds = new Set(merchandiseHotspotDefs.flatMap((hotspot) => hotspot.buildingIds));
+
+    return {
+      type: 'FeatureCollection',
+      features: (allBuildings.features || []).filter((feature) =>
+        selectedIds.has(feature.properties?.BLDG_ID)
+      )
+    };
+  }
+
+  function createMerchandiseCallouts(allIncidents) {
+    return merchandiseHotspotDefs.map((hotspot) => {
+      const count = allIncidents.filter(
+        (incident) =>
+          incident.itemCategory === 'Merchandise' && hotspot.locationNames.includes(incident.locationName)
+      ).length;
+      const storesLabel = hotspot.locationNames.join(' + ');
+
+      return {
+        ...hotspot,
+        count,
+        storesLabel
+      };
+    });
+  }
+
   function locateIntroFrame(frameIndex) {
     if (!introTimeline.length) {
       return null;
@@ -545,14 +835,17 @@
     introMonthYearLabel = frameState.monthLabel;
     introTimelineProgress = frameState.progress;
     introTimelineDayLabel = frameState.dayLabel;
+    if (activeHandScene === 'intro') {
+      refreshVisibleHands();
+    }
   }
 
-  function projectIntroHands() {
-    if (!map || !introHands.length) {
-      return;
+  function projectHandSet(handSet) {
+    if (!map || !handSet.length) {
+      return [];
     }
 
-    introHands = introHands.map((hand) => {
+    return handSet.map((hand) => {
       const projected = map.project([hand.longitude, hand.latitude]);
 
       return {
@@ -563,47 +856,60 @@
     });
   }
 
-  function extendBounds(bounds, coordinates) {
-    if (!Array.isArray(coordinates)) {
+  function refreshVisibleHands() {
+    if (activeHandScene === 'intro') {
+      visibleHands = projectHandSet(
+        introHands.map((hand) => ({
+          ...hand,
+          mode: 'intro'
+        }))
+      );
+      visibleCallouts = [];
       return;
     }
 
-    if (typeof coordinates[0] === 'number' && typeof coordinates[1] === 'number') {
-      const [longitude, latitude] = coordinates;
-      bounds.west = Math.min(bounds.west, longitude);
-      bounds.east = Math.max(bounds.east, longitude);
-      bounds.south = Math.min(bounds.south, latitude);
-      bounds.north = Math.max(bounds.north, latitude);
+    if (activeHandScene === 'aggregate') {
+      visibleHands = projectHandSet(aggregateHands);
+      visibleCallouts = [];
       return;
     }
 
-    coordinates.forEach((value) => extendBounds(bounds, value));
-  }
+    if (activeHandScene === 'merchandise') {
+      visibleHands = projectHandSet(merchandiseHands);
+      visibleCallouts = merchandiseCallouts.map((callout) => {
+        const projected = map.project([callout.longitude, callout.latitude]);
+        const edgeMidpoints = [
+          { x: callout.offsetX + MERCH_CALLOUT_BOX_WIDTH / 2, y: callout.offsetY },
+          { x: callout.offsetX + MERCH_CALLOUT_BOX_WIDTH, y: callout.offsetY + MERCH_CALLOUT_BOX_HEIGHT / 2 },
+          { x: callout.offsetX + MERCH_CALLOUT_BOX_WIDTH / 2, y: callout.offsetY + MERCH_CALLOUT_BOX_HEIGHT },
+          { x: callout.offsetX, y: callout.offsetY + MERCH_CALLOUT_BOX_HEIGHT / 2 }
+        ];
+        const nearestEdge = edgeMidpoints.reduce((best, point) => {
+          const distance = Math.hypot(point.x, point.y);
+          return !best || distance < best.distance ? { ...point, distance } : best;
+        }, null);
+        const lineLength = nearestEdge?.distance || 0;
+        const lineAngle = Math.atan2(nearestEdge?.y || 0, nearestEdge?.x || 0);
 
-  function getFeatureBounds(feature) {
-    const geometry = feature?.geometry;
-
-    if (!geometry?.coordinates) {
-      return null;
+        return {
+          ...callout,
+          x: projected.x,
+          y: projected.y,
+          lineLength,
+          lineAngle
+        };
+      });
+      return;
     }
 
-    const bounds = {
-      west: Number.POSITIVE_INFINITY,
-      east: Number.NEGATIVE_INFINITY,
-      south: Number.POSITIVE_INFINITY,
-      north: Number.NEGATIVE_INFINITY
-    };
-
-    extendBounds(bounds, geometry.coordinates);
-
-    if (!Number.isFinite(bounds.west)) {
-      return null;
+    if (HOTSPOT_SCENE_IDS.has(activeHandScene)) {
+      visibleHands = projectHandSet(hotspotHandsByScene[activeHandScene] || []);
+      visibleCallouts = [];
+      return;
     }
 
-    return [
-      [bounds.west, bounds.south],
-      [bounds.east, bounds.north]
-    ];
+    visibleHands = [];
+    visibleCallouts = [];
   }
 
   function setLayerVisibility(layerId, visible) {
@@ -632,6 +938,11 @@
     });
 
     addSourceIfMissing(SOURCE_IDS.uchicagoBuildings, {
+      type: 'geojson',
+      data: emptyFeatureCollection
+    });
+
+    addSourceIfMissing(SOURCE_IDS.merchandiseHighlights, {
       type: 'geojson',
       data: emptyFeatureCollection
     });
@@ -753,6 +1064,37 @@
 
     map.addLayer(
       {
+        id: LAYER_IDS.merchandiseHighlightFill,
+        type: 'fill',
+        source: SOURCE_IDS.merchandiseHighlights,
+        layout: {
+          visibility: 'none'
+        },
+        paint: {
+          'fill-color': '#800000',
+          'fill-opacity': 0.3
+        }
+      }
+    );
+
+    map.addLayer(
+      {
+        id: LAYER_IDS.merchandiseHighlightLine,
+        type: 'line',
+        source: SOURCE_IDS.merchandiseHighlights,
+        layout: {
+          visibility: 'none'
+        },
+        paint: {
+          'line-color': '#800000',
+          'line-width': 2.4,
+          'line-opacity': 0.95
+        }
+      }
+    );
+
+    map.addLayer(
+      {
         id: LAYER_IDS.boundaryLine,
         type: 'line',
         source: SOURCE_IDS.boundary,
@@ -797,6 +1139,7 @@
     setSourceData(SOURCE_IDS.boundary, boundaryCollection);
     setSourceData(SOURCE_IDS.buildings, buildingCollection);
     setSourceData(SOURCE_IDS.uchicagoBuildings, uchicagoBuildingCollection);
+    setSourceData(SOURCE_IDS.merchandiseHighlights, merchandiseHighlightCollection);
     setSourceData(SOURCE_IDS.incidents, withDisplayColor(incidentsGeoJson));
   }
 
@@ -805,19 +1148,32 @@
       return;
     }
 
-    handsEnabled = chapterId === 'intro';
-    if (handsEnabled) {
-      projectIntroHands();
-    }
+    activeHandScene =
+      chapterId === 'intro'
+        ? 'intro'
+        : chapterId === 'buildings'
+          ? 'aggregate'
+          : chapterId === 'merchandise'
+            ? 'merchandise'
+            : HOTSPOT_SCENE_IDS.has(chapterId)
+              ? chapterId
+              : 'none';
+    refreshVisibleHands();
 
-    const showIncidents = !['intro', 'buildings', 'regenstein'].includes(chapterId);
+    const showIncidents =
+      chapterId !== 'intro' &&
+      chapterId !== 'buildings' &&
+      chapterId !== 'merchandise' &&
+      !HOTSPOT_SCENE_IDS.has(chapterId);
     setLayerVisibility(LAYER_IDS.incidents, showIncidents);
     setLayerVisibility(LAYER_IDS.buildingsFill, false);
     setLayerVisibility(LAYER_IDS.buildingsLine, false);
     setLayerVisibility(LAYER_IDS.uchicagoBuildingsFill, true);
     setLayerVisibility(LAYER_IDS.uchicagoBuildingsLine, true);
-    setLayerVisibility(LAYER_IDS.buildingHighlightFill, chapterId === 'regenstein');
-    setLayerVisibility(LAYER_IDS.buildingHighlightLine, chapterId === 'regenstein');
+    setLayerVisibility(LAYER_IDS.buildingHighlightFill, false);
+    setLayerVisibility(LAYER_IDS.buildingHighlightLine, false);
+    setLayerVisibility(LAYER_IDS.merchandiseHighlightFill, chapterId === 'merchandise');
+    setLayerVisibility(LAYER_IDS.merchandiseHighlightLine, chapterId === 'merchandise');
 
     if (chapterId === 'intro') {
       map.setFilter(LAYER_IDS.incidents, null);
@@ -837,53 +1193,35 @@
       return;
     }
 
-    if (chapterId === 'regenstein') {
+    if (chapterId === 'merchandise') {
       map.setFilter(LAYER_IDS.incidents, null);
+      map.fitBounds(STUDY_BOUNDS_ARRAY, {
+        padding: { top: 72, right: 72, bottom: 72, left: 72 },
+        duration: 900
+      });
 
-      if (regensteinBounds) {
-        map.fitBounds(regensteinBounds, {
-          padding: { top: 120, right: 120, bottom: 120, left: 120 },
+      return;
+    }
+
+    if (HOTSPOT_SCENE_IDS.has(chapterId)) {
+      const scene = HOTSPOT_SCENES[chapterId];
+
+      map.setFilter(LAYER_IDS.incidents, ['==', ['get', 'itemCategory'], scene.category]);
+
+      if (scene.zoom) {
+        map.easeTo({
+          center: [CAMPUS_CENTER.longitude, CAMPUS_CENTER.latitude],
+          zoom: scene.zoom,
           duration: 900
         });
+        return;
       }
 
-      return;
-    }
-
-    if (chapterId === 'categories') {
-      map.setFilter(LAYER_IDS.incidents, null);
-      map.fitBounds(STUDY_BOUNDS_ARRAY, {
-        padding: { top: 54, right: 54, bottom: 54, left: 54 },
-        duration: 900
-      });
-      return;
-    }
-
-    if (chapterId === 'tech') {
-      map.setFilter(LAYER_IDS.incidents, ['==', ['get', 'itemCategory'], 'Tech']);
-      map.easeTo({
-        center: [CAMPUS_CENTER.longitude, CAMPUS_CENTER.latitude],
-        zoom: 14.9,
-        duration: 900
-      });
-      return;
-    }
-
-    if (chapterId === 'bikes') {
-      map.setFilter(LAYER_IDS.incidents, ['==', ['get', 'itemCategory'], 'Bikes & E-scooters']);
       map.fitBounds(STUDY_BOUNDS_ARRAY, {
         padding: { top: 54, right: 54, bottom: 54, left: 54 },
         duration: 900
       });
     }
-  }
-
-  function statValueFor(category) {
-    return categoryCounts.find(([name]) => name === category)?.[1] || 0;
-  }
-
-  function percentOfTotal(value) {
-    return incidents.length ? Math.round((value / incidents.length) * 100) : 0;
   }
 
   $: boundaryFeatures = boundary.features?.length ? boundary.features : [fallbackBounds];
@@ -901,18 +1239,33 @@
     type: 'FeatureCollection',
     features: uchicagoBuildingFeatures
   };
+  $: merchandiseHighlightFeatures = Array.isArray(merchandiseHighlightBuildings.features)
+    ? merchandiseHighlightBuildings.features
+    : [];
+  $: merchandiseHighlightCollection = {
+    type: 'FeatureCollection',
+    features: merchandiseHighlightFeatures
+  };
   $: incidentsGeoJson = incidentsToGeoJson(incidents);
-  $: categoryMap = incidents.reduce((accumulator, incident) => {
-    accumulator[incident.itemCategory] = (accumulator[incident.itemCategory] || 0) + 1;
-    return accumulator;
-  }, {});
-  $: categoryCounts = Object.entries(categoryMap).sort((left, right) => right[1] - left[1]);
-  $: topCategories = categoryCounts.slice(0, 6);
-  $: maxCategoryCount = topCategories[0]?.[1] || 1;
-  $: techCount = statValueFor('Tech');
-  $: bikeCount = statValueFor('Bikes & E-scooters');
-  $: merchandiseCount = statValueFor('Merchandise');
-  $: activeChapter = storyChapters.find((chapter) => chapter.id === activeChapterId) || storyChapters[0];
+  $: hotspotStats = Object.fromEntries(
+    Object.keys(HOTSPOT_SCENES).map((sceneId) => {
+      const hands = hotspotHandsByScene[sceneId] || [];
+
+      return [
+        sceneId,
+        {
+          count: hands.length,
+          uniqueHotspots: new Set(
+            hands.map((hand) => `${hand.latitude.toFixed(5)}|${hand.longitude.toFixed(5)}`)
+          ).size,
+          largestHotspotCount: hands.reduce(
+            (largest, hand) => Math.max(largest, hand.hotspotCount || 0),
+            0
+          )
+        }
+      ];
+    })
+  );
   $: if (map && map.isStyleLoaded()) {
     syncMapData();
   }
@@ -927,143 +1280,31 @@
       <div class="map-shell">
         <div bind:this={mapContainer} class="map-canvas" aria-label="Theft incidents around Hyde Park"></div>
 
-        {#if handsEnabled && introMonthYearLabel}
-          <div class="timeline-chip">
-            <div class="timeline-chip-month">{introMonthYearLabel}</div>
-            <div class="timeline-track-wrap" aria-hidden="true">
-              <div class="timeline-track"></div>
-              <div class="timeline-marker" style={`left:${introTimelineProgress * 100}%;`}></div>
-            </div>
-            {#if introTimelineDayLabel}
-              <div class="timeline-chip-day">{introTimelineDayLabel}</div>
-            {/if}
-          </div>
-        {/if}
-
-        {#if mapLoaded}
-          <div class:disabled={!handsEnabled} class="hand-overlay" aria-hidden="true">
-            {#each introHands as hand (hand.id)}
-              <img
-                class="walking-hand"
-                src={hand.assetPath}
-                alt=""
-                style={`width:${hand.size}px; left:${hand.x - hand.size / 2}px; top:${hand.y - hand.size / 2}px; transform:rotate(${hand.rotation}deg); animation-duration:${hand.animationDurationMs || INTRO_HAND_LIFETIME_MS}ms; animation-delay:${hand.animationDelayMs || 0}ms;`}
-              />
-            {/each}
-          </div>
-        {/if}
-
-        {#if loading}
-          <div class="floating-note">Loading map and data...</div>
-        {:else if error}
-          <div class="floating-note error">{error}</div>
-        {/if}
+        <MapOverlay
+          {activeHandScene}
+          {introMonthYearLabel}
+          {introTimelineProgress}
+          {introTimelineDayLabel}
+          {mapLoaded}
+          {visibleHands}
+          {visibleCallouts}
+          introHandLifetimeMs={INTRO_HAND_LIFETIME_MS}
+          {loading}
+          {error}
+        />
       </div>
     </div>
   </section>
 
-  <aside class="story-column">
-    <div class="story-header">
-      <div class="eyebrow">May 2025 - May 2026</div>
-      <h1>Map of UChicago Police Department Reported Thefts</h1>
-      <p>
-        This project explores a year of theft data reported around the University of Chicago’s campus, 
-        examining what items were most commonly stolen, where incidents occurred, and the unusual edge 
-        cases that appear throughout the records. Familiar hotspots emerge, including the
-         Hyde Park Shopping Center, CCD/UCMED. 
-         <br>
-         In one year we observe 584 reported thefts, of which:
-        <ul>
-          <li>258 involved merchandise</li>
-          <li>72 involved bikes and scooters taken from at least 31 unique bike rack locations</li>
-          <li>49 involved wallets, credit cards, or cash</li>
-          <li>40 involved tech: 13 phones, 7 laptops, 5 airpods, 4 ipads, 2 cameras, 1 TV</li>
-          <li>28 cars</li>
-          <li>22 bags or backpacks</li>
-          <li>27 tools, taken mainly from maintenance vans</li>
-          <li>20 packages or food deliveries</li>
-          <li>11 articles of clothing, mostly jackets, and 3 pieces of jewelry</li>
-        </ul>
-
-      <!-- <br> -->
-          Data was retrieved using Michael Plunkett’s tool that scrapes UCPD incident reports, published on the 
-        <a href="https://chicagomaroon.com/41255/grey-city/the-maroon-launches-uchicago-police-department-incident-reporter/" target="_blank" rel="noopener noreferrer">
-       Maroon's Incident Reporter Project</a>.
-      <!-- </p> -->
-    </div>
-
-    {#each storyChapters as chapter, index}
-      <section
-        class:active={activeChapterId === chapter.id}
-        bind:this={chapterRefs[index]}
-        class="story-step"
-        data-chapter-id={chapter.id}
-      >
-        <div class="step-kicker">{chapter.kicker}</div>
-        <h2>{chapter.title}</h2>
-        <p>{chapter.body}</p>
-
-        {#if chapter.graphic === 'stats'}
-          <div class="metric-grid">
-            <article>
-              <span>Building footprints</span>
-              <strong>{buildingFeatures.length.toLocaleString()}</strong>
-            </article>
-            <article>
-              <span>Theft points</span>
-              <strong>{incidents.length}</strong>
-            </article>
-          </div>
-        {/if}
-
-        {#if chapter.graphic === 'regenstein'}
-          <div class="metric-grid single">
-            <article>
-              <span>Current highlighted building</span>
-              <strong>{REGENSTEIN_BUILDING_NAME}</strong>
-              <small>`BLDG_ID` {REGENSTEIN_BUILDING_ID}</small>
-            </article>
-          </div>
-        {/if}
-
-        {#if chapter.graphic === 'categories'}
-          <div class="chart-card">
-            <div class="chart-title">Top stolen-item categories</div>
-            {#each topCategories as [category, count]}
-              <div class="bar-row">
-                <div class="bar-label">{category}</div>
-                <div class="bar-track">
-                  <div
-                    class="bar-fill"
-                    style={`width:${(count / maxCategoryCount) * 100}%; background:${colorForCategory(category)};`}
-                  ></div>
-                </div>
-                <div class="bar-value">{count}</div>
-              </div>
-            {/each}
-          </div>
-        {/if}
-
-        {#if chapter.graphic === 'tech'}
-          <div class="chart-card compact">
-            <div class="chart-title">Tech thefts</div>
-            <div class="big-number">{techCount}</div>
-            <div class="chart-caption">{percentOfTotal(techCount)}% of the theft rows with coordinates</div>
-          </div>
-        {/if}
-
-        {#if chapter.graphic === 'bikes'}
-          <div class="chart-card compact">
-            <div class="chart-title">Bikes and scooters</div>
-            <div class="big-number">{bikeCount}</div>
-            <div class="compare-line">
-              Merchandise: <strong>{merchandiseCount}</strong>
-            </div>
-          </div>
-        {/if}
-      </section>
-    {/each}
-  </aside>
+  <StoryPanel
+    {storyChapters}
+    {activeChapterId}
+    {chapterRefs}
+    buildingFeaturesLength={buildingFeatures.length}
+    incidentsLength={incidents.length}
+    hotspotScenes={HOTSPOT_SCENES}
+    {hotspotStats}
+  />
 </div>
 
 <style>
@@ -1098,276 +1339,6 @@
   .map-canvas {
     width: 100%;
     height: 100%;
-  }
-
-  .eyebrow,
-  .step-kicker {
-    color: #8c1d18;
-    font-size: 0.76rem;
-    font-weight: 700;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-  }
-
-  .timeline-chip {
-    position: absolute;
-    top: 1.1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 4;
-    min-width: 14rem;
-    padding: 0.65rem 0.9rem 0.7rem;
-    border-radius: 18px;
-    background: rgba(75, 64, 62, 0.8);
-    color: #fff8f2;
-    box-shadow: 0 12px 28px rgba(25, 17, 16, 0.2);
-  }
-
-  .timeline-chip-month {
-    font-size: 0.83rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    text-align: center;
-  }
-
-  .timeline-track-wrap {
-    position: relative;
-    margin-top: 0.42rem;
-    padding: 0 0.15rem;
-  }
-
-  .timeline-track {
-    height: 1px;
-    width: 100%;
-    background: rgba(255, 248, 242, 0.34);
-  }
-
-  .timeline-marker {
-    position: absolute;
-    top: 50%;
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background: #f2c14e;
-    box-shadow: 0 0 0 2px rgba(242, 193, 78, 0.18);
-    transform: translate(-50%, -50%);
-    transition: left 260ms ease;
-  }
-
-  .timeline-chip-day {
-    margin-top: 0.36rem;
-    color: rgba(255, 248, 242, 0.7);
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
-    text-align: center;
-    text-transform: uppercase;
-  }
-
-  .hand-overlay {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-    z-index: 3;
-    opacity: 1;
-    transition: opacity 320ms ease;
-  }
-
-  .hand-overlay.disabled {
-    opacity: 0;
-  }
-
-  .walking-hand {
-    position: absolute;
-    transform-origin: 50% 50%;
-    filter: drop-shadow(0 8px 14px rgba(49, 20, 20, 0.14));
-    user-select: none;
-    opacity: 0;
-    animation-name: handPulse;
-    animation-timing-function: ease-in-out;
-    animation-fill-mode: both;
-    animation-iteration-count: 1;
-  }
-
-  @keyframes handPulse {
-    0% {
-      opacity: 0;
-    }
-
-    32% {
-      opacity: 0.82;
-    }
-
-    68% {
-      opacity: 0.82;
-    }
-
-    100% {
-      opacity: 0;
-    }
-  }
-
-  .floating-note {
-    position: absolute;
-    left: 1.1rem;
-    bottom: 1.1rem;
-    z-index: 4;
-    padding: 0.75rem 0.95rem;
-    border-radius: 14px;
-    background: rgba(35, 24, 22, 0.88);
-    color: #fff8f2;
-    font-size: 0.95rem;
-    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
-  }
-
-  .floating-note.error {
-    background: rgba(122, 24, 24, 0.92);
-  }
-
-  .story-column {
-    padding: 2rem 1.5rem 20vh;
-  }
-
-  .story-header {
-    max-width: 40rem;
-    margin: 0 auto 2rem;
-  }
-
-  .story-header h1,
-  .story-step h2,
-  .story-header p,
-  .story-step p {
-    margin: 0;
-  }
-
-  .story-header h1 {
-    margin-top: 0.35rem;
-    color: #201413;
-    font-size: clamp(2rem, 4vw, 3.2rem);
-    line-height: 0.96;
-    letter-spacing: -0.04em;
-  }
-
-  .story-header p {
-    margin-top: 0.95rem;
-    color: #5e4a45;
-    font-size: 1.02rem;
-    line-height: 1.55;
-  }
-
-  .story-step {
-    max-width: 40rem;
-    min-height: 88vh;
-    margin: 0 auto;
-    padding: 1.1rem 0 2rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 1rem;
-    opacity: 0.46;
-    transform: translateY(20px);
-    transition:
-      opacity 220ms ease,
-      transform 220ms ease;
-  }
-
-  .story-step.active {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  .story-step h2 {
-    color: #201413;
-    font-size: clamp(1.75rem, 3vw, 2.4rem);
-    line-height: 1.02;
-    letter-spacing: -0.03em;
-  }
-
-  .story-step p {
-    color: #5e4a45;
-    line-height: 1.65;
-    font-size: 1rem;
-    max-width: 34rem;
-  }
-
-  .metric-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.8rem;
-    margin-top: 0.3rem;
-  }
-
-  .metric-grid.single {
-    grid-template-columns: 1fr;
-  }
-
-  .metric-grid article,
-  .chart-card {
-    padding: 1rem;
-    border-radius: 18px;
-    background: rgba(255, 252, 247, 0.88);
-    border: 1px solid rgba(67, 35, 31, 0.08);
-    box-shadow: 0 18px 40px rgba(44, 25, 21, 0.06);
-  }
-
-  .metric-grid span,
-  .chart-title,
-  .chart-caption,
-  .metric-grid small {
-    color: #6b5751;
-    font-size: 0.85rem;
-  }
-
-  .metric-grid strong,
-  .big-number {
-    display: block;
-    margin-top: 0.35rem;
-    color: #231715;
-    font-size: 1.7rem;
-    line-height: 1.05;
-  }
-
-  .chart-card {
-    display: flex;
-    flex-direction: column;
-    gap: 0.7rem;
-  }
-
-  .chart-card.compact {
-    max-width: 18rem;
-  }
-
-  .bar-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1.7fr) minmax(0, 3fr) auto;
-    align-items: center;
-    gap: 0.65rem;
-  }
-
-  .bar-label,
-  .bar-value,
-  .compare-line {
-    color: #3e2d29;
-    font-size: 0.92rem;
-  }
-
-  .bar-track {
-    height: 0.8rem;
-    border-radius: 999px;
-    background: rgba(120, 95, 86, 0.14);
-    overflow: hidden;
-  }
-
-  .bar-fill {
-    height: 100%;
-    border-radius: inherit;
-  }
-
-  .big-number {
-    font-size: 3.15rem;
-    font-weight: 700;
-    letter-spacing: -0.04em;
   }
 
   :global(.maplibregl-canvas) {
@@ -1427,41 +1398,6 @@
     .map-sticky {
       position: relative;
       height: 70vh;
-    }
-
-    .story-column {
-      padding-top: 1.25rem;
-    }
-
-    .story-step {
-      min-height: 72vh;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .story-column {
-      padding: 1rem 1rem 16vh;
-    }
-
-    .floating-note {
-      left: 0.8rem;
-      right: 0.8rem;
-      max-width: none;
-    }
-
-    .timeline-chip {
-      top: 5.8rem;
-      left: auto;
-      right: 0.8rem;
-      transform: none;
-    }
-
-    .metric-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .bar-row {
-      grid-template-columns: 1fr;
     }
   }
 </style>
