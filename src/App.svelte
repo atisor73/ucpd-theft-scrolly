@@ -43,21 +43,22 @@
   const CAR_ICON_MIN_SIZE = 25;
   const CAR_ICON_MAX_SIZE = 25;
   const BAG_ICON_MIN_SIZE = 13;
-  const BAG_ICON_MAX_SIZE = 20;
-  const WALLET_ICON_MIN_SIZE = 20;
-  const WALLET_ICON_MAX_SIZE = 20;
+  const BAG_ICON_MAX_SIZE = 18;
+  const WALLET_ICON_MIN_SIZE = 13;
+  const WALLET_ICON_MAX_SIZE = 15;
   const TECH_ICON_MIN_SIZE = 15;
-  const TECH_ICON_MAX_SIZE = 25;
+  const TECH_ICON_MAX_SIZE = 20;
   const PACKAGE_ICON_MIN_SIZE = 17;
   const PACKAGE_ICON_MAX_SIZE = 38;
-  const CLOTHING_JEWELRY_ICON_MIN_SIZE = 17;
-  const CLOTHING_JEWELRY_ICON_MAX_SIZE = 38;
-  const TOOL_ICON_MIN_SIZE = 17;
-  const TOOL_ICON_MAX_SIZE = 40;
+  const CLOTHING_JEWELRY_ICON_MIN_SIZE = 22;
+  const CLOTHING_JEWELRY_ICON_MAX_SIZE = 22;
+  const TOOL_ICON_MIN_SIZE = 20;
+  const TOOL_ICON_MAX_SIZE = 23;
   const MISC_ICON_MIN_SIZE = 16;
   const MISC_ICON_MAX_SIZE = 36;
   const MERCH_CALLOUT_BOX_WIDTH = 168;
   const MERCH_CALLOUT_BOX_HEIGHT = 76;
+  const REGENSTEIN_ADDRESS_FRAGMENT = '1100 e. 57th st.';
   const jewelryPattern = /(jewel|ring|necklace|bracelet|earring|watch)/i;
   const merchandiseHotspotDefs = [
     {
@@ -140,8 +141,7 @@
       uniqueLabel: 'unique tech-theft locations',
       hotspotLabel: 'tech',
       minSize: TECH_ICON_MIN_SIZE,
-      maxSize: TECH_ICON_MAX_SIZE,
-      zoom: 14.9
+      maxSize: TECH_ICON_MAX_SIZE
     },
     packages: {
       category: 'Packages & Food delivery',
@@ -228,6 +228,7 @@
   let introHands = [];
   let aggregateHands = [];
   let merchandiseHands = [];
+  let bikeCallouts = [];
   let hotspotHandsByScene = {};
   let hotspotStats = {};
   let visibleHands = [];
@@ -293,6 +294,7 @@
           introTimeline = createIntroTimeline(loadedIncidents);
           aggregateHands = createAggregateHands(loadedIncidents);
           merchandiseHands = createMerchandiseHands(loadedIncidents);
+          bikeCallouts = createBikeCallouts(loadedIncidents);
           hotspotHandsByScene = Object.fromEntries(
             Object.entries(HOTSPOT_SCENES).map(([sceneId, scene]) => [
               sceneId,
@@ -614,22 +616,16 @@
 
   function createMerchandiseHands(allIncidents) {
     const merchandiseIncidents = allIncidents.filter((incident) => incident.itemCategory === 'Merchandise');
-    const hotspotCounts = new Map();
+    const hotspotSummaries = buildHotspotSummaries(merchandiseIncidents);
 
-    merchandiseIncidents.forEach((incident) => {
-      const roundedLongitude = Number(incident.longitude.toFixed(5));
-      const roundedLatitude = Number(incident.latitude.toFixed(5));
-      const hotspotKey = `${roundedLatitude}|${roundedLongitude}`;
-      hotspotCounts.set(hotspotKey, (hotspotCounts.get(hotspotKey) || 0) + 1);
-    });
-
-    const maxCount = Math.max(...hotspotCounts.values(), 1);
+    const maxCount = Math.max(...[...hotspotSummaries.values()].map((summary) => summary.count), 1);
 
     return merchandiseIncidents.map((incident, index) => {
       const roundedLongitude = Number(incident.longitude.toFixed(5));
       const roundedLatitude = Number(incident.latitude.toFixed(5));
       const hotspotKey = `${roundedLatitude}|${roundedLongitude}`;
-      const count = hotspotCounts.get(hotspotKey) || 1;
+      const hotspotSummary = hotspotSummaries.get(hotspotKey) || { count: 1, firstComment: '' };
+      const count = hotspotSummary.count || 1;
       const scale = Math.sqrt(count / maxCount);
 
       return {
@@ -641,6 +637,7 @@
         animationDelayMs: Math.round(stableUnit(`merch-delay-${incident.id}-${index}`) * 180),
         mode: 'merchandise',
         hotspotCount: count,
+        firstComment: hotspotSummary.firstComment,
         longitude: incident.longitude,
         latitude: incident.latitude,
         itemCategory: incident.itemCategory,
@@ -650,6 +647,37 @@
         validatedAddress: incident.validatedAddress
       };
     });
+  }
+
+  function buildHotspotSummaries(filteredIncidents) {
+    const hotspotSummaries = new Map();
+
+    filteredIncidents.forEach((incident) => {
+      const roundedLongitude = Number(incident.longitude.toFixed(5));
+      const roundedLatitude = Number(incident.latitude.toFixed(5));
+      const hotspotKey = `${roundedLatitude}|${roundedLongitude}`;
+      const timestamp = getIncidentTimestamp(incident) || Number.POSITIVE_INFINITY;
+
+      if (!hotspotSummaries.has(hotspotKey)) {
+        hotspotSummaries.set(hotspotKey, {
+          count: 0,
+          firstComment: '',
+          firstTimestamp: Number.POSITIVE_INFINITY
+        });
+      }
+
+      const summary = hotspotSummaries.get(hotspotKey);
+      summary.count += 1;
+
+      if (timestamp < summary.firstTimestamp) {
+        summary.firstTimestamp = timestamp;
+        summary.firstComment = incident.comments || '';
+      } else if (!summary.firstComment && incident.comments) {
+        summary.firstComment = incident.comments;
+      }
+    });
+
+    return hotspotSummaries;
   }
 
   function assetPathForHotspotIncident(sceneId, scene, incident, index) {
@@ -668,22 +696,16 @@
 
   function createHotspotHands(allIncidents, sceneId, scene) {
     const sceneIncidents = allIncidents.filter((incident) => incident.itemCategory === scene.category);
-    const hotspotCounts = new Map();
+    const hotspotSummaries = buildHotspotSummaries(sceneIncidents);
 
-    sceneIncidents.forEach((incident) => {
-      const roundedLongitude = Number(incident.longitude.toFixed(5));
-      const roundedLatitude = Number(incident.latitude.toFixed(5));
-      const hotspotKey = `${roundedLatitude}|${roundedLongitude}`;
-      hotspotCounts.set(hotspotKey, (hotspotCounts.get(hotspotKey) || 0) + 1);
-    });
-
-    const maxCount = Math.max(...hotspotCounts.values(), 1);
+    const maxCount = Math.max(...[...hotspotSummaries.values()].map((summary) => summary.count), 1);
 
     return sceneIncidents.map((incident, index) => {
       const roundedLongitude = Number(incident.longitude.toFixed(5));
       const roundedLatitude = Number(incident.latitude.toFixed(5));
       const hotspotKey = `${roundedLatitude}|${roundedLongitude}`;
-      const count = hotspotCounts.get(hotspotKey) || 1;
+      const hotspotSummary = hotspotSummaries.get(hotspotKey) || { count: 1, firstComment: '' };
+      const count = hotspotSummary.count || 1;
       const scale = Math.sqrt(count / maxCount);
 
       return {
@@ -696,6 +718,7 @@
         mode: 'category-hotspot',
         hotspotCount: count,
         hotspotLabel: scene.hotspotLabel,
+        firstComment: hotspotSummary.firstComment,
         longitude: incident.longitude,
         latitude: incident.latitude,
         itemCategory: incident.itemCategory,
@@ -705,6 +728,33 @@
         validatedAddress: incident.validatedAddress
       };
     });
+  }
+
+  function createBikeCallouts(allIncidents) {
+    const regensteinRows = allIncidents.filter((incident) => {
+      const locationName = String(incident.locationName || '').toLowerCase();
+      const location = String(incident.location || '').toLowerCase();
+
+      return locationName.includes('regenstein') || location.includes(REGENSTEIN_ADDRESS_FRAGMENT);
+    });
+    const bikeRows = regensteinRows.filter((incident) => incident.itemCategory === 'Bikes & E-scooters');
+
+    if (!bikeRows.length) {
+      return [];
+    }
+
+    return [
+      {
+        id: 'regenstein-bike-rack',
+        title: 'Regenstein bike rack cluster',
+        metaText: `${bikeRows.length} bike and scooter reports`,
+        detailText: `${regensteinRows.length} total theft reports tied to Regenstein / 1100 E. 57th St.`,
+        longitude: bikeRows[0].longitude,
+        latitude: bikeRows[0].latitude,
+        offsetX: 104,
+        offsetY: -174
+      }
+    ];
   }
 
   function createMerchandiseHighlightBuildings(allBuildings) {
@@ -729,7 +779,8 @@
       return {
         ...hotspot,
         count,
-        storesLabel
+        metaText: `${count} merchandise reports`,
+        detailText: storesLabel
       };
     });
   }
@@ -876,40 +927,44 @@
 
     if (activeHandScene === 'merchandise') {
       visibleHands = projectHandSet(merchandiseHands);
-      visibleCallouts = merchandiseCallouts.map((callout) => {
-        const projected = map.project([callout.longitude, callout.latitude]);
-        const edgeMidpoints = [
-          { x: callout.offsetX + MERCH_CALLOUT_BOX_WIDTH / 2, y: callout.offsetY },
-          { x: callout.offsetX + MERCH_CALLOUT_BOX_WIDTH, y: callout.offsetY + MERCH_CALLOUT_BOX_HEIGHT / 2 },
-          { x: callout.offsetX + MERCH_CALLOUT_BOX_WIDTH / 2, y: callout.offsetY + MERCH_CALLOUT_BOX_HEIGHT },
-          { x: callout.offsetX, y: callout.offsetY + MERCH_CALLOUT_BOX_HEIGHT / 2 }
-        ];
-        const nearestEdge = edgeMidpoints.reduce((best, point) => {
-          const distance = Math.hypot(point.x, point.y);
-          return !best || distance < best.distance ? { ...point, distance } : best;
-        }, null);
-        const lineLength = nearestEdge?.distance || 0;
-        const lineAngle = Math.atan2(nearestEdge?.y || 0, nearestEdge?.x || 0);
-
-        return {
-          ...callout,
-          x: projected.x,
-          y: projected.y,
-          lineLength,
-          lineAngle
-        };
-      });
+      visibleCallouts = projectOverlayCallouts(merchandiseCallouts);
       return;
     }
 
     if (HOTSPOT_SCENE_IDS.has(activeHandScene)) {
       visibleHands = projectHandSet(hotspotHandsByScene[activeHandScene] || []);
-      visibleCallouts = [];
+      visibleCallouts = activeHandScene === 'bikes' ? projectOverlayCallouts(bikeCallouts) : [];
       return;
     }
 
     visibleHands = [];
     visibleCallouts = [];
+  }
+
+  function projectOverlayCallouts(callouts) {
+    return callouts.map((callout) => {
+      const projected = map.project([callout.longitude, callout.latitude]);
+      const edgeMidpoints = [
+        { x: callout.offsetX + MERCH_CALLOUT_BOX_WIDTH / 2, y: callout.offsetY },
+        { x: callout.offsetX + MERCH_CALLOUT_BOX_WIDTH, y: callout.offsetY + MERCH_CALLOUT_BOX_HEIGHT / 2 },
+        { x: callout.offsetX + MERCH_CALLOUT_BOX_WIDTH / 2, y: callout.offsetY + MERCH_CALLOUT_BOX_HEIGHT },
+        { x: callout.offsetX, y: callout.offsetY + MERCH_CALLOUT_BOX_HEIGHT / 2 }
+      ];
+      const nearestEdge = edgeMidpoints.reduce((best, point) => {
+        const distance = Math.hypot(point.x, point.y);
+        return !best || distance < best.distance ? { ...point, distance } : best;
+      }, null);
+      const lineLength = nearestEdge?.distance || 0;
+      const lineAngle = Math.atan2(nearestEdge?.y || 0, nearestEdge?.x || 0);
+
+      return {
+        ...callout,
+        x: projected.x,
+        y: projected.y,
+        lineLength,
+        lineAngle
+      };
+    });
   }
 
   function setLayerVisibility(layerId, visible) {
@@ -1170,8 +1225,8 @@
     setLayerVisibility(LAYER_IDS.buildingsLine, false);
     setLayerVisibility(LAYER_IDS.uchicagoBuildingsFill, true);
     setLayerVisibility(LAYER_IDS.uchicagoBuildingsLine, true);
-    setLayerVisibility(LAYER_IDS.buildingHighlightFill, false);
-    setLayerVisibility(LAYER_IDS.buildingHighlightLine, false);
+    setLayerVisibility(LAYER_IDS.buildingHighlightFill, chapterId === 'bikes');
+    setLayerVisibility(LAYER_IDS.buildingHighlightLine, chapterId === 'bikes');
     setLayerVisibility(LAYER_IDS.merchandiseHighlightFill, chapterId === 'merchandise');
     setLayerVisibility(LAYER_IDS.merchandiseHighlightLine, chapterId === 'merchandise');
 

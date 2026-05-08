@@ -9,21 +9,38 @@
   export let introHandLifetimeMs = 300;
   export let loading = false;
   export let error = '';
+  let hoveredHand = null;
 
-  function overlayTooltip(hand) {
-    if (hand.mode !== 'merchandise' && hand.mode !== 'category-hotspot') {
+  function handMeta(hand) {
+    if (!hand?.hotspotCount) {
       return '';
     }
 
-    const lines = [
-      hand.locationName || hand.location || 'Hotspot',
-      hand.validatedAddress || '',
-      hand.hotspotCount
-        ? `${hand.hotspotCount} ${hand.mode === 'merchandise' ? 'merchandise' : hand.hotspotLabel || 'category'} reports at this hotspot`
-        : ''
-    ].filter(Boolean);
+    if (hand.mode === 'merchandise') {
+      return `${hand.hotspotCount} merchandise reports at this hotspot`;
+    }
 
-    return lines.join('\n');
+    if (hand.mode === 'category-hotspot') {
+      return `${hand.hotspotCount} ${hand.hotspotLabel || 'category'} reports at this hotspot`;
+    }
+
+    return '';
+  }
+
+  function showHandHover(hand) {
+    if (hand.mode !== 'merchandise' && hand.mode !== 'category-hotspot') {
+      return;
+    }
+
+    hoveredHand = hand;
+  }
+
+  function clearHandHover() {
+    hoveredHand = null;
+  }
+
+  $: if (hoveredHand && !visibleHands.some((hand) => hand.id === hoveredHand.id)) {
+    hoveredHand = null;
   }
 </script>
 
@@ -50,12 +67,13 @@
         class="walking-hand"
         src={hand.assetPath}
         alt=""
-        title={overlayTooltip(hand)}
+        on:mouseenter={() => showHandHover(hand)}
+        on:mouseleave={clearHandHover}
         style={`width:${hand.size}px; left:${hand.x - hand.size / 2}px; top:${hand.y - hand.size / 2}px; transform:rotate(${hand.rotation}deg); animation-duration:${hand.animationDurationMs || introHandLifetimeMs}ms; animation-delay:${hand.animationDelayMs || 0}ms; --hand-opacity:${hand.mode === 'aggregate' ? hand.opacity : 1};`}
       />
     {/each}
 
-    {#if activeHandScene === 'merchandise'}
+    {#if visibleCallouts.length}
       {#each visibleCallouts as callout (callout.id)}
         <div class="merch-callout-anchor" style={`left:${callout.x}px; top:${callout.y}px;`}>
           <div
@@ -67,11 +85,24 @@
             style={`transform:translate(${callout.offsetX}px, ${callout.offsetY}px);`}
           >
             <div class="merch-callout-title">{callout.title}</div>
-            <div class="merch-callout-meta">{callout.count} merchandise reports</div>
-            <div class="merch-callout-store">{callout.storesLabel}</div>
+            <div class="merch-callout-meta">{callout.metaText}</div>
+            <div class="merch-callout-store">{callout.detailText}</div>
           </div>
         </div>
       {/each}
+    {/if}
+
+    {#if hoveredHand}
+      <div
+        class="hover-card"
+        style={`left:${Math.max(hoveredHand.x + 18, 12)}px; top:${Math.max(hoveredHand.y - 12, 12)}px;`}
+      >
+        <div class="hover-card-title">{hoveredHand.locationName || hoveredHand.location || 'Hotspot'}</div>
+        <div class="hover-card-meta">{handMeta(hoveredHand)}</div>
+        {#if hoveredHand.firstComment}
+          <div class="hover-card-text">{hoveredHand.firstComment}</div>
+        {/if}
+      </div>
     {/if}
   </div>
 {/if}
@@ -155,7 +186,7 @@
   .walking-hand {
     position: absolute;
     transform-origin: 50% 50%;
-    filter: drop-shadow(0 8px 14px rgba(49, 20, 20, 0.14));
+    filter: drop-shadow(0 0 0.6px rgba(255, 255, 255, 0.98));
     user-select: none;
     opacity: 0;
     animation-name: handPulse;
@@ -169,17 +200,15 @@
   }
 
   .walking-hand.merchandise-icon {
-    opacity: 0.72;
+    opacity: 1;
     animation-name: merchandiseAppear;
-    filter: drop-shadow(0 6px 10px rgba(92, 38, 30, 0.12));
     pointer-events: auto;
     cursor: help;
   }
 
   .walking-hand.category-icon {
-    opacity: 0.86;
+    opacity: 1;
     animation-name: merchandiseAppear;
-    filter: drop-shadow(0 6px 10px rgba(39, 52, 67, 0.14));
     pointer-events: auto;
     cursor: help;
   }
@@ -247,6 +276,42 @@
     line-height: 1.3;
   }
 
+  .hover-card {
+    position: absolute;
+    z-index: 6;
+    width: min(16rem, calc(100vw - 1.5rem));
+    padding: 0.72rem 0.82rem 0.78rem;
+    border-radius: 12px;
+    background: rgba(255, 249, 244, 0.98);
+    border: 1px solid rgba(90, 47, 38, 0.12);
+    box-shadow: 0 14px 30px rgba(30, 18, 16, 0.16);
+    transform: translateY(-100%);
+    pointer-events: none;
+  }
+
+  .hover-card-title {
+    color: #3d201c;
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .hover-card-meta {
+    margin-top: 0.25rem;
+    color: #7a4f47;
+    font-size: 0.71rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .hover-card-text {
+    margin-top: 0.42rem;
+    color: #5f4b47;
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
   @keyframes handPulse {
     0% {
       opacity: 0;
@@ -281,7 +346,7 @@
     }
 
     100% {
-      opacity: 0.72;
+      opacity: 1;
     }
   }
 

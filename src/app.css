@@ -2,7 +2,7 @@
 :root {
   color-scheme: light;
   /* font-family: "Avenir Next", "Segoe UI", sans-serif; */
-  font-family: "Trebuchet MS", "Cormorant Garamond", sans-serif;
+  font-family: "Inter", "Trebuchet MS", "Cormorant Garamond", sans-serif;
   
   background: #ecebe8;
   color: #201514;
@@ -20,9 +20,22 @@ Fraunces
 Crimson Pro
 Libre Baskerville
 Source Serif 4 */
+h1{
+  font-size:40px !important;
+}
+h2{
+  font-size:30px !important;
+}
 h1,h2,h3 {
-  font-family:'Cormorant Garamond' !important;
-  line-height: 1.3 !important;
+  font-family: "Gelasio", 'Cormorant Garamond' !important;
+  line-height: 1.2 !important;
+}
+a {
+  color: maroon;
+}
+
+a:hover {
+  color: #800000;
 }
 
 html,

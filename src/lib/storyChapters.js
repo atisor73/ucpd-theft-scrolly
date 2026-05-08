@@ -2,7 +2,7 @@ export const storyChapters = [
   {
     id: 'intro',
     kicker: ' ',
-    title: 'May 2025 - May 2026 UChicago Crime Data',
+    title: ' ',
     body: `
       <p>In one year we observe 584 reported thefts, of which:</p>
       <ul>

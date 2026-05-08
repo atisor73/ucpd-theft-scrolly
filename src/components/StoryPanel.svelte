@@ -32,6 +32,10 @@
       }
     );
   }
+
+  function hasHtmlBody(chapter) {
+    return /<[^>]+>/.test(String(chapter?.body || ''));
+  }
 </script>
 
 <aside class="story-column">
@@ -43,7 +47,8 @@
       examining what items were most commonly stolen, where incidents occurred, and the unusual edge
       cases that appear throughout the records. Familiar hotspots emerge, including the Hyde Park
       Shopping Center, CCD/UCMED.
-      <br />
+      <br/>
+      <br/>
       Data was retrieved using Michael Plunkett’s tool that scrapes UCPD incident reports, published
       on the
       <a
@@ -65,7 +70,13 @@
     >
       <div class="step-kicker">{chapter.kicker}</div>
       <h2>{chapter.title}</h2>
-      <p>{chapter.body}</p>
+      {#if hasHtmlBody(chapter)}
+        <div class="story-body rich-text">
+          {@html chapter.body}
+        </div>
+      {:else}
+        <p>{chapter.body}</p>
+      {/if}
 
       {#if chapter.graphic === 'stats'}
         <div class="metric-grid">
@@ -130,6 +141,7 @@
   .story-header {
     max-width: 40rem;
     margin: 0 auto 2rem;
+    padding: 0 0.85rem;
   }
 
   .story-header h1,
@@ -167,7 +179,7 @@
     max-width: 40rem;
     min-height: 88vh;
     margin: 0 auto;
-    padding: 1.1rem 0 2rem;
+    padding: 1.1rem 0.85rem 2rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -196,6 +208,33 @@
     line-height: 1.65;
     font-size: 1rem;
     max-width: 34rem;
+  }
+
+  .story-body {
+    color: #5e4a45;
+    font-size: 1.04rem;
+    line-height: 1.65;
+    max-width: 34rem;
+  }
+
+  .story-body :global(p) {
+    margin: 0;
+  }
+
+  .story-body :global(p:first-child) {
+    color: #3f2d29;
+    font-size: 1.12rem;
+    font-weight: 600;
+    line-height: 1.45;
+  }
+
+  .story-body :global(ul) {
+    margin: 0.9rem 0 0;
+    padding-left: 1.35rem;
+  }
+
+  .story-body :global(li + li) {
+    margin-top: 0.34rem;
   }
 
   .metric-grid {
@@ -266,14 +305,14 @@
   .glyph {
     width: 2.5rem;
     height: 2.5rem;
-    opacity: 0.76;
-    filter: drop-shadow(0 6px 12px rgba(64, 46, 40, 0.12));
+    opacity: 1;
+    filter: drop-shadow(0 0 0.6px rgba(255, 255, 255, 0.98));
   }
 
   .glyph.hotspot {
     width: 3.55rem;
     height: 3.55rem;
-    opacity: 0.9;
+    opacity: 1;
   }
 
   @media (max-width: 980px) {

@@ -3,6 +3,7 @@ import { UNKNOWN_CATEGORY } from './mapConfig.js';
 
 const COORDINATE_PATTERN = /-?\d+\.\d+/g;
 const DATE_PATTERN = /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/;
+const MISCELLANEOUS_ITEM_PATTERNS = [/brass caps? of fire hose/i, /steel caps? of fire hoses/i];
 
 function parseDatePart(value) {
   const match = String(value ?? '').trim().match(DATE_PATTERN);
@@ -82,7 +83,11 @@ export function parseValidatedLocation(value) {
   return { latitude, longitude };
 }
 
-export function normalizeCategory(value) {
+export function normalizeCategory(value, itemStolen = '') {
+  if (MISCELLANEOUS_ITEM_PATTERNS.some((pattern) => pattern.test(String(itemStolen)))) {
+    return 'Miscellaneous';
+  }
+
   const cleaned = String(value ?? '').trim();
   return cleaned || UNKNOWN_CATEGORY;
 }
@@ -120,7 +125,7 @@ export async function loadIncidents() {
         locationName: row.location_name || '',
         validatedAddress: row.validated_address || '',
         itemStolen: row.item_stolen || '',
-        itemCategory: normalizeCategory(row.item_category),
+        itemCategory: normalizeCategory(row.item_category, row.item_stolen),
         latitude: location.latitude,
         longitude: location.longitude
       };
