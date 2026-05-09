@@ -4,6 +4,15 @@ import { UNKNOWN_CATEGORY } from './mapConfig.js';
 const COORDINATE_PATTERN = /-?\d+\.\d+/g;
 const DATE_PATTERN = /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/;
 const MISCELLANEOUS_ITEM_PATTERNS = [/brass caps? of fire hose/i, /steel caps? of fire hoses/i];
+const withBase = (path) => {
+  const value = String(path ?? '');
+
+  if (/^(?:[a-z]+:)?\/\//i.test(value) || value.startsWith(import.meta.env.BASE_URL)) {
+    return value;
+  }
+
+  return `${import.meta.env.BASE_URL}${value.replace(/^\//, '')}`;
+};
 
 function parseDatePart(value) {
   const match = String(value ?? '').trim().match(DATE_PATTERN);
@@ -93,7 +102,7 @@ export function normalizeCategory(value, itemStolen = '') {
 }
 
 export async function loadIncidents() {
-  const rows = await csv('/data/ucpd-theft-categorized.csv');
+  const rows = await csv(withBase('/data/ucpd-theft-categorized.csv'));
 
   return rows
     .map((row, index) => {
@@ -134,7 +143,7 @@ export async function loadIncidents() {
 }
 
 export async function loadSceneStats() {
-  const rows = await csv('/data/panel-scene-stats.csv');
+  const rows = await csv(withBase('/data/panel-scene-stats.csv'));
 
   console.log('[loadSceneStats] row count', rows.length);
   console.log('[loadSceneStats] sceneIds', rows.map((row) => row.sceneId));
@@ -193,7 +202,7 @@ export function incidentToGeoJson(incident) {
 
 export async function loadOptionalGeoJson(url) {
   try {
-    const response = await fetch(url);
+    const response = await fetch(withBase(url));
 
     if (!response.ok) {
       return {

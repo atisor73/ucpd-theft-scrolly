@@ -7,6 +7,7 @@
   export let hotspotScenes = {};
   export let sceneStats = {};
   export let loading = false;
+  const fallbackGlyphAssetPath = `${import.meta.env.BASE_URL}assets/hand1.svg`;
   let visibleChapterStats = {};
 
   function emptyStats() {
@@ -132,7 +133,7 @@
                 />
               {/each}
               {#if !(sceneFor(chapter)?.previewGlyphs?.length)}
-                <img class="glyph hotspot" src="/assets/hand1.svg" alt="" />
+                <img class="glyph hotspot" src={fallbackGlyphAssetPath} alt="" />
               {/if}
             </div>
             <div class="big-number">{statsFor(chapter).count}</div>

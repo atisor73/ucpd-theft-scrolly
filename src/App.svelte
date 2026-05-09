@@ -29,8 +29,21 @@
 
   const fallbackBounds = createBoundsFeature();
   const emptyFeatureCollection = { type: 'FeatureCollection', features: [] };
-  const handAssetPaths = ['/assets/hand1.svg', '/assets/hand2.svg', '/assets/hand3.svg', '/assets/hand4.svg'];
-  const merchandiseAssetPath = '/assets/merchandise.svg';
+  const assetUrl = (path) => `${import.meta.env.BASE_URL}assets/${path}`;
+  const geoUrl = (path) => `${import.meta.env.BASE_URL}geo/${path}`;
+  const ringAssetPath = assetUrl('ring.svg');
+  const jacketAssetPath = assetUrl('jacket.svg');
+  const violinAssetPath = assetUrl('violin.svg');
+  const burgerAssetPath = assetUrl('burger.svg');
+  const dogAssetPath = assetUrl('dog.svg');
+  const asteriskAssetPath = assetUrl('asterisk.svg');
+  const handAssetPaths = [
+    assetUrl('hand1.svg'),
+    assetUrl('hand2.svg'),
+    assetUrl('hand3.svg'),
+    assetUrl('hand4.svg')
+  ];
+  const merchandiseAssetPath = assetUrl('merchandise.svg');
   const INTRO_TARGET_HANDS_PER_FRAME = 4;
   const INTRO_HAND_FRAME_MS = 500; //750;
   const INTRO_HAND_LIFETIME_MS = 300; //520;
@@ -108,8 +121,8 @@
   const HOTSPOT_SCENES = {
     bikes: {
       category: 'Bikes & E-scooters',
-      assetPaths: ['/assets/bike1.svg', '/assets/bike2.svg'],
-      previewGlyphs: ['/assets/bike2.svg', '/assets/bike1.svg'],
+      assetPaths: [assetUrl('bike1.svg'), assetUrl('bike2.svg')],
+      previewGlyphs: [assetUrl('bike2.svg'), assetUrl('bike1.svg')],
       panelTitle: 'Bike and scooter reports',
       uniqueLabel: 'unique bike and scooter locations',
       hotspotLabel: 'bike/scooter',
@@ -118,8 +131,8 @@
     },
     cars: {
       category: 'Car & Car parts',
-      assetPaths: ['/assets/car1.svg', '/assets/car2.svg'],
-      previewGlyphs: ['/assets/car2.svg', '/assets/car1.svg'],
+      assetPaths: [assetUrl('car1.svg'), assetUrl('car2.svg')],
+      previewGlyphs: [assetUrl('car2.svg'), assetUrl('car1.svg')],
       panelTitle: 'Car and car-part reports',
       uniqueLabel: 'unique vehicle locations',
       hotspotLabel: 'car/car-part',
@@ -128,8 +141,8 @@
     },
     bags: {
       category: 'Bags',
-      assetPaths: ['/assets/bag.svg'],
-      previewGlyphs: ['/assets/bag.svg', '/assets/bag.svg'],
+      assetPaths: [assetUrl('bag.svg')],
+      previewGlyphs: [assetUrl('bag.svg'), assetUrl('bag.svg')],
       panelTitle: 'Bag theft reports',
       uniqueLabel: 'unique bag-theft locations',
       hotspotLabel: 'bag',
@@ -138,8 +151,8 @@
     },
     wallets: {
       category: 'Wallet, Credit cards, Cash',
-      assetPaths: ['/assets/wallet.svg'],
-      previewGlyphs: ['/assets/wallet.svg', '/assets/wallet.svg'],
+      assetPaths: [assetUrl('wallet.svg')],
+      previewGlyphs: [assetUrl('wallet.svg'), assetUrl('wallet.svg')],
       panelTitle: 'Wallet and cash reports',
       uniqueLabel: 'unique wallet/cash locations',
       hotspotLabel: 'wallet/cash',
@@ -148,8 +161,8 @@
     },
     tech: {
       category: 'Tech',
-      assetPaths: ['/assets/device.svg'],
-      previewGlyphs: ['/assets/device.svg', '/assets/device.svg'],
+      assetPaths: [assetUrl('device.svg')],
+      previewGlyphs: [assetUrl('device.svg'), assetUrl('device.svg')],
       panelTitle: 'Tech theft reports',
       uniqueLabel: 'unique tech-theft locations',
       hotspotLabel: 'tech',
@@ -158,8 +171,8 @@
     },
     packages: {
       category: 'Packages & Food delivery',
-      assetPaths: ['/assets/package.svg'],
-      previewGlyphs: ['/assets/package.svg', '/assets/package.svg'],
+      assetPaths: [assetUrl('package.svg')],
+      previewGlyphs: [assetUrl('package.svg'), assetUrl('package.svg')],
       panelTitle: 'Package and delivery reports',
       uniqueLabel: 'unique package/delivery locations',
       hotspotLabel: 'package/delivery',
@@ -168,7 +181,7 @@
     },
     clothingJewelry: {
       category: 'Clothing & Jewelry',
-      previewGlyphs: ['/assets/jacket.svg', '/assets/ring.svg'],
+      previewGlyphs: [jacketAssetPath, ringAssetPath],
       panelTitle: 'Clothing and jewelry reports',
       uniqueLabel: 'unique clothing/jewelry locations',
       hotspotLabel: 'clothing/jewelry',
@@ -177,8 +190,8 @@
     },
     tools: {
       category: 'Tools',
-      assetPaths: ['/assets/hammer1.svg', '/assets/hammer2.svg'],
-      previewGlyphs: ['/assets/hammer2.svg', '/assets/hammer1.svg'],
+      assetPaths: [assetUrl('hammer1.svg'), assetUrl('hammer2.svg')],
+      previewGlyphs: [assetUrl('hammer2.svg'), assetUrl('hammer1.svg')],
       panelTitle: 'Tool theft reports',
       uniqueLabel: 'unique tool-theft locations',
       hotspotLabel: 'tool',
@@ -187,7 +200,7 @@
     },
     miscellaneous: {
       category: 'Miscellaneous',
-      previewGlyphs: ['/assets/violin.svg', '/assets/burger.svg', '/assets/dog.svg', '/assets/asterisk.svg'],
+      previewGlyphs: [violinAssetPath, burgerAssetPath, dogAssetPath, asteriskAssetPath],
       panelTitle: 'Miscellaneous reports',
       uniqueLabel: 'unique miscellaneous locations',
       hotspotLabel: 'miscellaneous',
@@ -198,7 +211,7 @@
   const PANEL_SCENES = {
     merchandise: {
       category: 'Merchandise',
-      previewGlyphs: ['/assets/merchandise.svg', '/assets/merchandise.svg'],
+      previewGlyphs: [merchandiseAssetPath, merchandiseAssetPath],
       panelTitle: 'Merchandise reports',
       uniqueLabel: 'unique merchandise hotspot locations',
       hotspotLabel: 'merchandise'
@@ -281,12 +294,12 @@
           await Promise.all([
             loadIncidents(),
             loadSceneStats(),
-            loadOptionalGeoJson('/geo/hyde-park-boundary.geojson'),
-            loadOptionalGeoJson('/geo/buildings_hydepark_region.geojson').then(
+            loadOptionalGeoJson(geoUrl('hyde-park-boundary.geojson')),
+            loadOptionalGeoJson(geoUrl('buildings_hydepark_region.geojson')).then(
             (geojson) =>
-              geojson.features?.length ? geojson : loadOptionalGeoJson('/geo/hyde-park-buildings.geojson')
+              geojson.features?.length ? geojson : loadOptionalGeoJson(geoUrl('hyde-park-buildings.geojson'))
             ),
-            loadOptionalGeoJson('/geo/uchicago-buildings.geojson')
+            loadOptionalGeoJson(geoUrl('uchicago-buildings.geojson'))
           ]);
 
         if (cancelled) {
@@ -771,25 +784,25 @@
 
   function assetPathForHotspotIncident(sceneId, scene, incident, index) {
     if (sceneId === 'clothingJewelry') {
-      return jewelryPattern.test(incident.itemStolen || '') ? '/assets/ring.svg' : '/assets/jacket.svg';
+      return jewelryPattern.test(incident.itemStolen || '') ? ringAssetPath : jacketAssetPath;
     }
 
     if (sceneId === 'miscellaneous') {
       const iconText = `${incident.itemStolen || ''} ${incident.comments || ''}`;
 
       if (miscellaneousInstrumentPattern.test(iconText)) {
-        return '/assets/violin.svg';
+        return violinAssetPath;
       }
 
       if (miscellaneousFoodPattern.test(iconText)) {
-        return '/assets/burger.svg';
+        return burgerAssetPath;
       }
 
       if (miscellaneousDogPattern.test(iconText)) {
-        return '/assets/dog.svg';
+        return dogAssetPath;
       }
 
-      return '/assets/asterisk.svg';
+      return asteriskAssetPath;
     }
 
     const assetPaths = scene.assetPaths?.length ? scene.assetPaths : handAssetPaths;
@@ -809,21 +822,21 @@
       };
     }
 
-    if (assetPath === '/assets/violin.svg') {
+    if (assetPath === violinAssetPath) {
       return {
         minSize: MISC_VIOLIN_ICON_MIN_SIZE,
         maxSize: MISC_VIOLIN_ICON_MAX_SIZE
       };
     }
 
-    if (assetPath === '/assets/burger.svg') {
+    if (assetPath === burgerAssetPath) {
       return {
         minSize: MISC_BURGER_ICON_MIN_SIZE,
         maxSize: MISC_BURGER_ICON_MAX_SIZE
       };
     }
 
-    if (assetPath === '/assets/dog.svg') {
+    if (assetPath === dogAssetPath) {
       return {
         minSize: MISC_DOG_ICON_MIN_SIZE,
         maxSize: MISC_DOG_ICON_MAX_SIZE
