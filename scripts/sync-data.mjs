@@ -1,4 +1,4 @@
-import { copyFile, mkdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,9 +10,11 @@ const sourcePath = path.resolve(
 );
 const targetDir = path.resolve(appRoot, 'public/data');
 const targetPath = path.join(targetDir, 'ucpd-theft-categorized.csv');
+const FIRE_HOSE_CAP_PATTERN = /(brass caps of fire hose|steel caps of fire hoses),Tools,/g;
 
 await mkdir(targetDir, { recursive: true });
-await copyFile(sourcePath, targetPath);
+const sourceText = await readFile(sourcePath, 'utf8');
+const normalizedText = sourceText.replace(FIRE_HOSE_CAP_PATTERN, '$1,Miscellaneous,');
+await writeFile(targetPath, normalizedText);
 
-console.log(`Copied ${sourcePath} -> ${targetPath}`);
-
+console.log(`Copied ${sourcePath} -> ${targetPath} with fire-hose-cap thefts recategorized as Miscellaneous`);

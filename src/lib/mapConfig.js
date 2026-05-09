@@ -1,11 +1,11 @@
 export const UNKNOWN_CATEGORY = 'Uncategorized';
 export const CARTO_POSITRON_STYLE =
   'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
-export const BUILDING_FILL_COLOR = '#800000';
-export const BUILDING_OUTLINE_COLOR = '#6a1010';
-export const BOUNDARY_LINE_COLOR = '#7b1818';
-export const HIGHLIGHT_FILL_COLOR = '#800000';
-export const HIGHLIGHT_LINE_COLOR = '#8c1d18';
+export const BUILDING_FILL_COLOR = '#5f0606';
+export const BUILDING_OUTLINE_COLOR = '#5f0606';
+export const BOUNDARY_LINE_COLOR = '#5f0606';
+export const HIGHLIGHT_FILL_COLOR = '#5f0606';
+export const HIGHLIGHT_LINE_COLOR = '#5f0606';
 export const REGENSTEIN_BUILDING_ID = 487268;
 export const REGENSTEIN_BUILDING_NAME = 'JOSEPH REGENSTEIN LIBRARY';
 

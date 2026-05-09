@@ -4,8 +4,63 @@
   export let chapterRefs = [];
   export let buildingFeaturesLength = 0;
   export let incidentsLength = 0;
+  export let incidents = [];
   export let hotspotScenes = {};
-  export let hotspotStats = {};
+  export let sceneStats = {};
+  let derivedSceneStats = {};
+
+  function buildHotspotSummaries(filteredIncidents) {
+    const hotspotSummaries = new Map();
+
+    filteredIncidents.forEach((incident) => {
+      const roundedLongitude = Number(incident.longitude?.toFixed?.(5));
+      const roundedLatitude = Number(incident.latitude?.toFixed?.(5));
+
+      if (!Number.isFinite(roundedLongitude) || !Number.isFinite(roundedLatitude)) {
+        return;
+      }
+
+      const hotspotKey = `${roundedLatitude}|${roundedLongitude}`;
+
+      if (!hotspotSummaries.has(hotspotKey)) {
+        hotspotSummaries.set(hotspotKey, {
+          count: 0,
+          locationName: incident.locationName || incident.location || 'Unknown hotspot'
+        });
+      }
+
+      const summary = hotspotSummaries.get(hotspotKey);
+      summary.count += 1;
+
+      if (!summary.locationName && (incident.locationName || incident.location)) {
+        summary.locationName = incident.locationName || incident.location;
+      }
+    });
+
+    return hotspotSummaries;
+  }
+
+  function buildSceneStats(allIncidents, scenes) {
+    return Object.fromEntries(
+      Object.entries(scenes).map(([sceneId, scene]) => {
+        const sceneIncidents = allIncidents.filter((incident) => incident.itemCategory === scene.category);
+        const hotspotSummaries = buildHotspotSummaries(sceneIncidents);
+        const topHotspot = [...hotspotSummaries.values()].sort((left, right) => right.count - left.count)[0];
+
+        return [
+          sceneId,
+          {
+            count: sceneIncidents.length,
+            uniqueHotspots: hotspotSummaries.size,
+            largestHotspotCount: topHotspot?.count || 0,
+            topHotspotName: topHotspot?.locationName || ''
+          }
+        ];
+      })
+    );
+  }
+
+  $: derivedSceneStats = buildSceneStats(incidents, hotspotScenes);
 
   function setChapterRef(node, index) {
     chapterRefs[index] = node;
@@ -23,30 +78,34 @@
     return hotspotScenes[chapter.sceneId] || null;
   }
 
-  function statsFor(chapter) {
-    return (
-      hotspotStats[chapter.sceneId] || {
-        count: 0,
-        uniqueHotspots: 0,
-        largestHotspotCount: 0
-      }
-    );
-  }
-
   function hasHtmlBody(chapter) {
     return /<[^>]+>/.test(String(chapter?.body || ''));
+  }
+
+  function statsFor(chapter) {
+    return (
+      derivedSceneStats[chapter.sceneId] ||
+      sceneStats[chapter.sceneId] || {
+        count: 0,
+        uniqueHotspots: 0,
+        largestHotspotCount: 0,
+        topHotspotName: ''
+      }
+    );
   }
 </script>
 
 <aside class="story-column">
   <div class="story-header">
     <div class="eyebrow">May 2025 - May 2026</div>
-    <h1>Map of UChicago Police Department Reported Thefts</h1>
+    <h1>Map of Reported Thefts to the University of Chicago's Police Department UCPD</h1>
     <p>
       This project explores a year of theft data reported around the University of Chicago’s campus,
       examining what items were most commonly stolen, where incidents occurred, and the unusual edge
       cases that appear throughout the records. Familiar hotspots emerge, including the Hyde Park
-      Shopping Center, CCD/UCMED.
+      Shopping Center, CCD/UCMED, and the Regenstein bike rack. 
+      Note that this dataset only reflects thefts that were reported to UCPD, and likely represents 
+      only a partial subset of theft in the area.
       <br/>
       <br/>
       Data was retrieved using Michael Plunkett’s tool that scrapes UCPD incident reports, published
@@ -56,8 +115,16 @@
         target="_blank"
         rel="noopener noreferrer"
       >
-        Maroon's Incident Reporter Project
+      Maroon's Incident Reporter Project
+      </a>. Mapping logic was inspired by Austin Steinhart's work on mapping the 
+      <a
+        href="https://chicagomaroon.github.io/data-visualizations/2025/uchicago-property/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Expansion of UChicago in Hyde Park
       </a>.
+      
     </p>
   </div>
 
@@ -91,17 +158,7 @@
         </div>
       {/if}
 
-      {#if chapter.graphic === 'merchandise'}
-        <div class="metric-grid single">
-          <article>
-            <span>Merchandise hotspots</span>
-            <strong>Walgreens, Target, and CVS</strong>
-            <small>Retail footprints highlighted with merchandise-only incidents</small>
-          </article>
-        </div>
-      {/if}
-
-      {#if chapter.graphic === 'hotspotPanel'}
+      {#if sceneFor(chapter)}
         <div class="chart-card compact">
           <div class="chart-title">{sceneFor(chapter)?.panelTitle || 'Category reports'}</div>
           <div class="glyph-row" aria-hidden="true">
@@ -121,6 +178,11 @@
           <div class="chart-caption">
             {statsFor(chapter).uniqueHotspots} {sceneFor(chapter)?.uniqueLabel || 'unique locations'}
           </div>
+          {#if statsFor(chapter).topHotspotName}
+            <div class="compare-line">
+              Top hotspot: <strong>{statsFor(chapter).topHotspotName}</strong>
+            </div>
+          {/if}
           <div class="compare-line">
             Largest hotspot: <strong>{statsFor(chapter).largestHotspotCount}</strong>
           </div>
@@ -140,8 +202,12 @@
 
   .story-header {
     max-width: 40rem;
-    margin: 0 auto 2rem;
+    min-height: 92vh;
+    margin: 0 auto 5rem;
     padding: 0 0.85rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   .story-header h1,
@@ -251,7 +317,7 @@
   .metric-grid article,
   .chart-card {
     padding: 1rem;
-    border-radius: 18px;
+    border-radius: 7px;
     background: rgba(255, 252, 247, 0.88);
     border: 1px solid rgba(67, 35, 31, 0.08);
     box-shadow: 0 18px 40px rgba(44, 25, 21, 0.06);
@@ -318,6 +384,11 @@
   @media (max-width: 980px) {
     .story-column {
       padding-top: 1.25rem;
+    }
+
+    .story-header {
+      min-height: 82vh;
+      margin-bottom: 4rem;
     }
 
     .story-step {

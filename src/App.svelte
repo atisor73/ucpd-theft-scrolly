@@ -50,10 +50,10 @@
   const TECH_ICON_MAX_SIZE = 20;
   const PACKAGE_ICON_MIN_SIZE = 17;
   const PACKAGE_ICON_MAX_SIZE = 38;
-  const CLOTHING_JEWELRY_ICON_MIN_SIZE = 22;
-  const CLOTHING_JEWELRY_ICON_MAX_SIZE = 22;
-  const TOOL_ICON_MIN_SIZE = 20;
-  const TOOL_ICON_MAX_SIZE = 23;
+  const CLOTHING_JEWELRY_ICON_MIN_SIZE = 30;
+  const CLOTHING_JEWELRY_ICON_MAX_SIZE = 33;
+  const TOOL_ICON_MIN_SIZE = 25;
+  const TOOL_ICON_MAX_SIZE = 30;
   const MISC_ICON_MIN_SIZE = 16;
   const MISC_ICON_MAX_SIZE = 36;
   const MERCH_CALLOUT_BOX_WIDTH = 168;
@@ -183,6 +183,16 @@
       maxSize: MISC_ICON_MAX_SIZE
     }
   };
+  const PANEL_SCENES = {
+    merchandise: {
+      category: 'Merchandise',
+      previewGlyphs: ['/assets/merchandise.svg', '/assets/merchandise.svg'],
+      panelTitle: 'Merchandise reports',
+      uniqueLabel: 'unique merchandise hotspot locations',
+      hotspotLabel: 'merchandise'
+    },
+    ...HOTSPOT_SCENES
+  };
   const HOTSPOT_SCENE_IDS = new Set(Object.keys(HOTSPOT_SCENES));
   const timelineFormatter = new Intl.DateTimeFormat('en-US', {
     month: 'short',
@@ -230,7 +240,6 @@
   let merchandiseHands = [];
   let bikeCallouts = [];
   let hotspotHandsByScene = {};
-  let hotspotStats = {};
   let visibleHands = [];
   let merchandiseCallouts = [];
   let visibleCallouts = [];
@@ -242,6 +251,7 @@
   let introMonthYearLabel = '';
   let introTimelineProgress = 0;
   let introTimelineDayLabel = '';
+  let panelSceneStats = {};
 
   onMount(() => {
     let popup;
@@ -662,12 +672,17 @@
         hotspotSummaries.set(hotspotKey, {
           count: 0,
           firstComment: '',
-          firstTimestamp: Number.POSITIVE_INFINITY
+          firstTimestamp: Number.POSITIVE_INFINITY,
+          locationName: incident.locationName || incident.location || 'Unknown hotspot'
         });
       }
 
       const summary = hotspotSummaries.get(hotspotKey);
       summary.count += 1;
+
+      if (!summary.locationName && (incident.locationName || incident.location)) {
+        summary.locationName = incident.locationName || incident.location;
+      }
 
       if (timestamp < summary.firstTimestamp) {
         summary.firstTimestamp = timestamp;
@@ -678,6 +693,26 @@
     });
 
     return hotspotSummaries;
+  }
+
+  function buildPanelSceneStats(allIncidents, scenes) {
+    return Object.fromEntries(
+      Object.entries(scenes).map(([sceneId, scene]) => {
+        const sceneIncidents = allIncidents.filter((incident) => incident.itemCategory === scene.category);
+        const hotspotSummaries = buildHotspotSummaries(sceneIncidents);
+        const topHotspot = [...hotspotSummaries.values()].sort((left, right) => right.count - left.count)[0];
+
+        return [
+          sceneId,
+          {
+            count: sceneIncidents.length,
+            uniqueHotspots: hotspotSummaries.size,
+            largestHotspotCount: topHotspot?.count || 0,
+            topHotspotName: topHotspot?.locationName || ''
+          }
+        ];
+      })
+    );
   }
 
   function assetPathForHotspotIncident(sceneId, scene, incident, index) {
@@ -731,30 +766,67 @@
   }
 
   function createBikeCallouts(allIncidents) {
-    const regensteinRows = allIncidents.filter((incident) => {
-      const locationName = String(incident.locationName || '').toLowerCase();
-      const location = String(incident.location || '').toLowerCase();
-
-      return locationName.includes('regenstein') || location.includes(REGENSTEIN_ADDRESS_FRAGMENT);
-    });
-    const bikeRows = regensteinRows.filter((incident) => incident.itemCategory === 'Bikes & E-scooters');
-
-    if (!bikeRows.length) {
-      return [];
-    }
-
-    return [
+    const bikeCalloutDefs = [
       {
         id: 'regenstein-bike-rack',
         title: 'Regenstein bike rack cluster',
-        metaText: `${bikeRows.length} bike and scooter reports`,
-        detailText: `${regensteinRows.length} total theft reports tied to Regenstein / 1100 E. 57th St.`,
-        longitude: bikeRows[0].longitude,
-        latitude: bikeRows[0].latitude,
+        matches(incident) {
+          const locationName = String(incident.locationName || '').toLowerCase();
+          const location = String(incident.location || '').toLowerCase();
+
+          return locationName.includes('regenstein') || location.includes(REGENSTEIN_ADDRESS_FRAGMENT);
+        },
+        detailText(totalCount) {
+          return `${totalCount} total theft reports tied to Regenstein / 1100 E. 57th St.`;
+        },
+        offsetX: 118,
+        offsetY: 90
+      },
+      {
+        id: 'ratner-bike-rack',
+        title: 'Ratner bike racks',
+        matches(incident) {
+          return String(incident.locationName || '').toLowerCase().includes('ratner');
+        },
+        detailText() {
+          return '5530 S. Ellis Ave.';
+        },
+        offsetX: -160,
+        offsetY: -160
+      },
+      {
+        id: 'campus-north-bike-rack',
+        title: 'Campus North bike racks',
+        matches(incident) {
+          return String(incident.locationName || '').toLowerCase().includes('campus north');
+        },
+        detailText() {
+          return '5500 S. University Ave.';
+        },
         offsetX: 104,
         offsetY: -174
       }
     ];
+
+    return bikeCalloutDefs.flatMap((callout) => {
+      const matchedRows = allIncidents.filter((incident) => callout.matches(incident));
+      const bikeRows = matchedRows.filter((incident) => incident.itemCategory === 'Bikes & E-scooters');
+
+      if (!bikeRows.length) {
+        return [];
+      }
+
+      return {
+        id: callout.id,
+        title: callout.title,
+        metaText: `${bikeRows.length} bike and scooter reports`,
+        detailText: callout.detailText(matchedRows.length),
+        longitude: bikeRows[0].longitude,
+        latitude: bikeRows[0].latitude,
+        offsetX: callout.offsetX,
+        offsetY: callout.offsetY
+      };
+    });
   }
 
   function createMerchandiseHighlightBuildings(allBuildings) {
@@ -1063,7 +1135,7 @@
         },
         paint: {
           'fill-color': HIGHLIGHT_FILL_COLOR,
-          'fill-opacity': 0.42
+          'fill-opacity': 0.84
         }
       }
     );
@@ -1302,25 +1374,7 @@
     features: merchandiseHighlightFeatures
   };
   $: incidentsGeoJson = incidentsToGeoJson(incidents);
-  $: hotspotStats = Object.fromEntries(
-    Object.keys(HOTSPOT_SCENES).map((sceneId) => {
-      const hands = hotspotHandsByScene[sceneId] || [];
-
-      return [
-        sceneId,
-        {
-          count: hands.length,
-          uniqueHotspots: new Set(
-            hands.map((hand) => `${hand.latitude.toFixed(5)}|${hand.longitude.toFixed(5)}`)
-          ).size,
-          largestHotspotCount: hands.reduce(
-            (largest, hand) => Math.max(largest, hand.hotspotCount || 0),
-            0
-          )
-        }
-      ];
-    })
-  );
+  $: panelSceneStats = buildPanelSceneStats(incidents, PANEL_SCENES);
   $: if (map && map.isStyleLoaded()) {
     syncMapData();
   }
@@ -1357,8 +1411,9 @@
     {chapterRefs}
     buildingFeaturesLength={buildingFeatures.length}
     incidentsLength={incidents.length}
-    hotspotScenes={HOTSPOT_SCENES}
-    {hotspotStats}
+    {incidents}
+    hotspotScenes={PANEL_SCENES}
+    sceneStats={panelSceneStats}
   />
 </div>
 
@@ -1367,8 +1422,8 @@
     min-height: 100vh;
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
-    background:
-      linear-gradient(180deg, #f9f4ee 0%, #efe1d3 100%);
+    /* background: #f7f3ed; */
+    background: #f3f1ee;
   }
 
   .map-column {
