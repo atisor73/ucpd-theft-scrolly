@@ -1,0 +1,39 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Hyde Park Study Area"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -87.6155,
+              41.779
+            ],
+            [
+              -87.578,
+              41.779
+            ],
+            [
+              -87.578,
+              41.8045
+            ],
+            [
+              -87.6155,
+              41.8045
+            ],
+            [
+              -87.6155,
+              41.779
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}
+
