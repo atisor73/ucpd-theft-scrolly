@@ -11,6 +11,7 @@
   export let loading = false;
   let visibleChapterStats = {};
   let activeChapter = null;
+  let activeChapterIndex = 0;
 
   function emptyStats() {
     return {
@@ -28,6 +29,10 @@
   );
   $: activeChapter =
     storyChapters.find((chapter) => chapter.id === activeChapterId) || storyChapters[0] || null;
+  $: activeChapterIndex = Math.max(
+    0,
+    storyChapters.findIndex((chapter) => chapter.id === activeChapterId)
+  );
 
   function setChapterRef(node, index) {
     chapterRefs[index] = node;
@@ -55,6 +60,17 @@
 
   function hasStatsFor(chapter) {
     return Boolean(sceneStats?.[chapter.sceneId]);
+  }
+
+  function scrollToChapter(index) {
+    const target = chapterRefs[index];
+
+    if (target) {
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
   }
 </script>
 
@@ -94,6 +110,24 @@
   <div class="story-experience">
     <div class="story-stage">
       <div class="story-stage-frame" aria-live="polite">
+        <div class="story-progress">
+          <div class="story-progress-label">
+            <span>Panel {activeChapterIndex + 1} of {storyChapters.length}</span>
+          </div>
+          <div class="story-progress-dots" aria-label="Story progress">
+            {#each storyChapters as chapter, index}
+              <button
+                type="button"
+                class:active={activeChapterId === chapter.id}
+                class="story-dot"
+                aria-label={`Jump to panel ${index + 1}: ${chapter.title}`}
+                aria-current={activeChapterId === chapter.id ? 'step' : undefined}
+                on:click={() => scrollToChapter(index)}
+              ></button>
+            {/each}
+          </div>
+        </div>
+
         {#if activeChapter}
           {#key activeChapter.id}
             <section class="story-step active" transition:fade={{ duration: 260 }}>
@@ -202,6 +236,67 @@
   .story-stage-frame {
     display: grid;
     width: 100%;
+  }
+
+  .story-progress {
+    grid-area: 1 / 1;
+    align-self: start;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: min(40rem, 100%);
+    margin: 0 auto;
+    padding: 1rem 0.85rem 0;
+    z-index: 2;
+    pointer-events: auto;
+  }
+
+  .story-progress-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .story-progress-label span {
+    color: #8c1d18;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .story-progress-dots {
+    display: flex;
+    align-items: center;
+    gap: 0.42rem;
+    flex-wrap: wrap;
+    justify-content: end;
+  }
+
+  .story-dot {
+    width: 0.62rem;
+    height: 0.62rem;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(140, 29, 24, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(140, 29, 24, 0.12);
+    transition:
+      transform 180ms ease,
+      background-color 180ms ease,
+      box-shadow 180ms ease;
+    cursor: pointer;
+  }
+
+  .story-dot:hover {
+    transform: scale(1.12);
+    background: rgba(140, 29, 24, 0.3);
+  }
+
+  .story-dot.active {
+    background: #8c1d18;
+    box-shadow: 0 0 0 4px rgba(140, 29, 24, 0.14);
+    transform: scale(1.1);
   }
 
   .story-header h1,
@@ -414,6 +509,16 @@
   @media (max-width: 640px) {
     .story-column {
       padding: 1rem 1rem 16vh;
+    }
+
+    .story-progress {
+      align-items: start;
+      flex-direction: column;
+      padding-top: 0.65rem;
+    }
+
+    .story-progress-dots {
+      justify-content: start;
     }
 
     .metric-grid {

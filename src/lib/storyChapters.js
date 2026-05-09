@@ -66,8 +66,7 @@ export const storyChapters = [
     body: `
       Of the 28 full vehicle thefts in this broader car/car-parts category, 24 were taken from public ways and 3 from parking lots, with very few occurring in the campus core. 
       Hondas were the most common make in the reports (8), followed by Acuras (5) and Hyundais (3).       
-      Other makes included Jeep (2), Infiniti (2), GMC (1), Cadillac (1), Nissan (1), Volvo (1), Lexus (1), 
-      and Kia (1), with 2 reports not specifying a make.
+      Other makes included Jeep, Infiniti (2), GMC, Cadillac, Nissan, Volvo, Lexus, and Kia (1).
       <br/><br/>
       The stolen vehicles also skewed relatively recent: 2019 models appeared 6 times, 2025 models 4 times, and 2022 models 3 times.
 
@@ -95,9 +94,9 @@ export const storyChapters = [
     body: `
       Wallets, credit-cards, and cash thefts clustered most heavily in medical and academic buildings. Medical locations accounted for 13 reports: 5 at Mitchell Hospital, 4 at CCD, 2 at UCMED, 1 at Comer Hospital, and 1 at Billings Hospital.
       <br/><br/>
-      Academic and campus-building locations accounted for another 13 reports, including 3 at Gordon Center, 3 at Kent Lab, and 1 each at Kersten Physics, Regenstein, Reynolds Club, Goldblatt, BSLC, Judd Hall, and Rosenwald Hall. Athletic spaces added 6 more reports, with 4 at Ratner A.C. and 2 at Knapp Center.
+      Academic campus buildings accounted for another 13 reports: 3 at Gordon Center, 3 at Kent Lab, and 1 each at Kersten Physics, Regenstein, Reynolds Club, Goldblatt, BSLC, Judd Hall, and Rosenwald Hall. Athletic spaces added 6 more reports, with 4 at Ratner and 2 at Knapp Center.
       <br/><br/>
-      Cafes and restaurants accounted for 6 reports, with 3 at Plein Air Cafe, 2 at McDonalds, and 1 at Roux. The remaining cases were scattered across public ways, parked vehicles, stores, an apartment, a rideshare vehicle, Maroon Financial, UCPD HQ, and Walgreens.
+      Cafes and restaurants accounted for 6 reports, with 3 at Plein Air Cafe, 2 at McDonalds, and 1 at Roux. The remaining cases were scattered across parked vehicles, stores, an apartment, a rideshare vehicle, Maroon Financial, UCPD HQ, and Walgreens.
     `,
     graphic: 'hotspotPanel',
     sceneId: 'wallets'
@@ -152,5 +151,13 @@ export const storyChapters = [
       'Within the remaining items, a few subcategories emerge: musical instruments appear five times, food-related thefts appear three times if restaurant cooking oil is included, and a strange concentrated run of 10 fire-hose-cap thefts all occurred between June 13 and June 16, 2025. The rest are mostly one-offs, including a dog, two guns, a shovel, a walker, a painting, keys, and even a glass jar.',
     graphic: 'hotspotPanel',
     sceneId: 'miscellaneous'
+  },
+  {
+    id: 'allReports',
+    kicker: 'Final View',
+    title: 'All reported thefts, accumulated across the year',
+    body:
+      'This final view replays the year’s reported thefts back onto the map, but this time each hand remains in place. What begins as a steady trickle resolves into the full geography of reports around campus and Hyde Park.',
+    graphic: 'lede'
   }
 ];
