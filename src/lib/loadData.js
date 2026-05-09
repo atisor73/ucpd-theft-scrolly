@@ -133,6 +133,26 @@ export async function loadIncidents() {
     .filter(Boolean);
 }
 
+export async function loadSceneStats() {
+  const rows = await csv('/data/panel-scene-stats.csv');
+
+  console.log('[loadSceneStats] row count', rows.length);
+  console.log('[loadSceneStats] sceneIds', rows.map((row) => row.sceneId));
+  console.log('[loadSceneStats] cars row', rows.find((row) => row.sceneId === 'cars'));
+
+  return Object.fromEntries(
+    rows.map((row) => [
+      row.sceneId,
+      {
+        count: Number(row.count) || 0,
+        uniqueHotspots: Number(row.uniqueHotspots) || 0,
+        largestHotspotCount: Number(row.largestHotspotCount) || 0,
+        topHotspotName: row.topHotspotName || ''
+      }
+    ])
+  );
+}
+
 export function incidentsToGeoJson(incidents) {
   return {
     type: 'FeatureCollection',

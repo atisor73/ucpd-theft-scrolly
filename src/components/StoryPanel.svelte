@@ -4,10 +4,9 @@
   export let chapterRefs = [];
   export let buildingFeaturesLength = 0;
   export let incidentsLength = 0;
-  export let incidents = [];
   export let hotspotScenes = {};
   export let sceneStats = {};
-  let derivedSceneStats = {};
+  export let loading = false;
   let visibleChapterStats = {};
 
   function emptyStats() {
@@ -19,66 +18,13 @@
     };
   }
 
-  function buildHotspotSummaries(filteredIncidents) {
-    const hotspotSummaries = new Map();
-
-    filteredIncidents.forEach((incident) => {
-      const roundedLongitude = Number(incident.longitude?.toFixed?.(5));
-      const roundedLatitude = Number(incident.latitude?.toFixed?.(5));
-
-      if (!Number.isFinite(roundedLongitude) || !Number.isFinite(roundedLatitude)) {
-        return;
-      }
-
-      const hotspotKey = `${roundedLatitude}|${roundedLongitude}`;
-
-      if (!hotspotSummaries.has(hotspotKey)) {
-        hotspotSummaries.set(hotspotKey, {
-          count: 0,
-          locationName: incident.locationName || incident.location || 'Unknown hotspot'
-        });
-      }
-
-      const summary = hotspotSummaries.get(hotspotKey);
-      summary.count += 1;
-
-      if (!summary.locationName && (incident.locationName || incident.location)) {
-        summary.locationName = incident.locationName || incident.location;
-      }
-    });
-
-    return hotspotSummaries;
-  }
-
-  function buildSceneStats(allIncidents, scenes) {
-    return Object.fromEntries(
-      Object.entries(scenes).map(([sceneId, scene]) => {
-        const sceneIncidents = allIncidents.filter((incident) => incident.itemCategory === scene.category);
-        const hotspotSummaries = buildHotspotSummaries(sceneIncidents);
-        const topHotspot = [...hotspotSummaries.values()].sort((left, right) => right.count - left.count)[0];
-
-        return [
-          sceneId,
-          {
-            count: sceneIncidents.length,
-            uniqueHotspots: hotspotSummaries.size,
-            largestHotspotCount: topHotspot?.count || 0,
-            topHotspotName: topHotspot?.locationName || ''
-          }
-        ];
-      })
-    );
-  }
-
-  $: derivedSceneStats = buildSceneStats(incidents, hotspotScenes);
   $: visibleChapterStats = Object.fromEntries(
     storyChapters
       .filter((chapter) => chapter.sceneId)
-      .map((chapter) => [
-        chapter.id,
-        derivedSceneStats[chapter.sceneId] || sceneStats[chapter.sceneId] || emptyStats()
-      ])
+      .map((chapter) => [chapter.id, sceneStats[chapter.sceneId] || emptyStats()])
   );
+  $: console.log('[StoryPanel] sceneStats.cars', sceneStats?.cars);
+  $: console.log('[StoryPanel] visibleChapterStats.cars', visibleChapterStats?.cars);
 
   function setChapterRef(node, index) {
     chapterRefs[index] = node;
@@ -102,6 +48,10 @@
 
   function statsFor(chapter) {
     return visibleChapterStats[chapter.id] || emptyStats();
+  }
+
+  function hasStatsFor(chapter) {
+    return Boolean(sceneStats?.[chapter.sceneId]);
   }
 </script>
 
@@ -168,7 +118,7 @@
         </div>
       {/if}
 
-      {#if sceneFor(chapter)}
+      {#if sceneFor(chapter) && !loading && hasStatsFor(chapter)}
         {#key `${chapter.id}:${statsFor(chapter).count}:${statsFor(chapter).uniqueHotspots}:${statsFor(chapter).largestHotspotCount}:${statsFor(chapter).topHotspotName}`}
           <div class="chart-card compact">
             <div class="chart-title">{sceneFor(chapter)?.panelTitle || 'Category reports'}</div>
@@ -330,7 +280,7 @@
   .chart-card {
     padding: 1rem;
     border-radius: 7px;
-    background: rgba(255, 252, 247, 0.88);
+    background: rgba(247, 247, 247, 0.88);
     border: 1px solid rgba(67, 35, 31, 0.08);
     box-shadow: 0 18px 40px rgba(44, 25, 21, 0.06);
   }

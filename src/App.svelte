@@ -11,7 +11,7 @@
   import maplibregl from 'maplibre-gl';
   import MapOverlay from './components/MapOverlay.svelte';
   import StoryPanel from './components/StoryPanel.svelte';
-  import { incidentsToGeoJson, loadIncidents, loadOptionalGeoJson } from './lib/loadData.js';
+  import { incidentsToGeoJson, loadIncidents, loadOptionalGeoJson, loadSceneStats } from './lib/loadData.js';
   import { storyChapters } from './lib/storyChapters.js';
   import {
     BOUNDARY_LINE_COLOR,
@@ -274,21 +274,31 @@
         await tick();
         observer = setupChapterObserver();
 
-        const [loadedIncidents, loadedBoundary, loadedBuildings, loadedUchicagoBuildings] = await Promise.all([
-          loadIncidents(),
-          loadOptionalGeoJson('/geo/hyde-park-boundary.geojson'),
-          loadOptionalGeoJson('/geo/buildings_hydepark_region.geojson').then(
+        const [loadedIncidents, loadedSceneStats, loadedBoundary, loadedBuildings, loadedUchicagoBuildings] =
+          await Promise.all([
+            loadIncidents(),
+            loadSceneStats(),
+            loadOptionalGeoJson('/geo/hyde-park-boundary.geojson'),
+            loadOptionalGeoJson('/geo/buildings_hydepark_region.geojson').then(
             (geojson) =>
               geojson.features?.length ? geojson : loadOptionalGeoJson('/geo/hyde-park-buildings.geojson')
-          ),
-          loadOptionalGeoJson('/geo/uchicago-buildings.geojson')
-        ]);
+            ),
+            loadOptionalGeoJson('/geo/uchicago-buildings.geojson')
+          ]);
 
         if (cancelled) {
           return;
         }
 
+        console.log('[initialize] loadedSceneStats keys', Object.keys(loadedSceneStats));
+        console.log('[initialize] loadedSceneStats.cars', loadedSceneStats.cars);
+        console.log(
+          '[initialize] car incidents from loadIncidents',
+          loadedIncidents.filter((incident) => incident.itemCategory === 'Car & Car parts').length
+        );
+
         incidents = loadedIncidents;
+        panelSceneStats = loadedSceneStats;
         boundary = loadedBoundary;
         buildings = loadedBuildings;
         uchicagoBuildings = loadedUchicagoBuildings;
@@ -705,26 +715,6 @@
     return hotspotSummaries;
   }
 
-  function buildPanelSceneStats(allIncidents, scenes) {
-    return Object.fromEntries(
-      Object.entries(scenes).map(([sceneId, scene]) => {
-        const sceneIncidents = allIncidents.filter((incident) => incident.itemCategory === scene.category);
-        const hotspotSummaries = buildHotspotSummaries(sceneIncidents);
-        const topHotspot = [...hotspotSummaries.values()].sort((left, right) => right.count - left.count)[0];
-
-        return [
-          sceneId,
-          {
-            count: sceneIncidents.length,
-            uniqueHotspots: hotspotSummaries.size,
-            largestHotspotCount: topHotspot?.count || 0,
-            topHotspotName: topHotspot?.locationName || ''
-          }
-        ];
-      })
-    );
-  }
-
   function assetPathForHotspotIncident(sceneId, scene, incident, index) {
     if (sceneId === 'clothingJewelry') {
       return jewelryPattern.test(incident.itemStolen || '') ? '/assets/ring.svg' : '/assets/jacket.svg';
@@ -795,6 +785,22 @@
   function createHotspotHands(allIncidents, sceneId, scene) {
     const sceneIncidents = allIncidents.filter((incident) => incident.itemCategory === scene.category);
     const hotspotSummaries = buildHotspotSummaries(sceneIncidents);
+
+    if (sceneId === 'cars') {
+      console.log('[createHotspotHands:cars]', {
+        sceneCategory: scene.category,
+        sceneIncidentCount: sceneIncidents.length,
+        uniqueHotspots: hotspotSummaries.size,
+        largestHotspot: Math.max(...[...hotspotSummaries.values()].map((summary) => summary.count), 0),
+        sample: sceneIncidents.slice(0, 5).map((incident) => ({
+          id: incident.id,
+          itemCategory: incident.itemCategory,
+          locationName: incident.locationName,
+          latitude: incident.latitude,
+          longitude: incident.longitude
+        }))
+      });
+    }
 
     const maxCount = Math.max(...[...hotspotSummaries.values()].map((summary) => summary.count), 1);
 
@@ -1439,9 +1445,6 @@
     features: merchandiseHighlightFeatures
   };
   $: incidentsGeoJson = incidentsToGeoJson(incidents);
-  $: panelSceneStats = buildPanelSceneStats(incidents, PANEL_SCENES);
-  $: console.log('App panelSceneStats', panelSceneStats);
-  $: console.log('App merchandise stats', panelSceneStats.merchandise);
   $: if (map && map.isStyleLoaded()) {
     syncMapData();
   }
@@ -1478,9 +1481,9 @@
     {chapterRefs}
     buildingFeaturesLength={buildingFeatures.length}
     incidentsLength={incidents.length}
-    {incidents}
     hotspotScenes={PANEL_SCENES}
     sceneStats={panelSceneStats}
+    {loading}
   />
 </div>
 

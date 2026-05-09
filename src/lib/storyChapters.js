@@ -125,7 +125,7 @@ export const storyChapters = [
   },
   {
     id: 'clothingJewelry',
-    kicker: 'Hotspots',
+    kicker: 'Clothing & Jewelry',
     title: 'Clothing and jewelry thefts mainly involved coats taken on-campus',
     body:
       'Coats and jackets were taken mainly from CCD, Mitchell Hospital, Eckhart Hall, Regenstein Library, Ratner A.C., and one off-campus apartment building on S. University Ave. Dresses and costumes appeared at Burton-Judson RH, Logan Center, and a dressing-room incident at Reynolds Club. All three jewelry reports came from UCMED.',
@@ -134,17 +134,18 @@ export const storyChapters = [
   },
   {
     id: 'tools',
-    kicker: 'Hotspots',
+    kicker: 'Tools',
     title: 'Tool thefts stand out in their dispersion and opportunistic nature',
     body:
-      'Tools are a smaller category overall, affecting a disproportionate number of work vans.',
+      'Tools are a smaller category overall, but show repeated patterns of opportunistic thefts\
+      targeting maintenance and work vans across campus and beyond.',
     graphic: 'hotspotPanel',
     sceneId: 'tools'
   },
   {
     id: 'miscellaneous',
-    kicker: 'Hotspots',
-    title: 'Miscellaneous thefts are the outlier bucket',
+    kicker: 'Miscellaneous',
+    title: 'Miscellaneous thefts',
     body:
       'Within the remaining items, a few subcategories emerge: musical instruments appear five times, food-related thefts appear three times if restaurant cooking oil is included, and a strange concentrated run of 10 fire-hose-cap thefts all occurred between June 13 and June 16, 2025. The rest are mostly one-offs, including a dog, two guns, a shovel, a walker, a painting, keys, and even a glass jar.',
     graphic: 'hotspotPanel',
