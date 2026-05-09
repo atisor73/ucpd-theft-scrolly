@@ -5,7 +5,7 @@ export const storyChapters = [
     title: 'Each hand marks a reported theft location',
     body:
       'Each hand corresponds to one reported theft placed at its \
-      recorded location. The animation is meant to convey the steady \
+      recorded location. The animation is meant to communicate the steady \
       rhythm of 1-2 theft reports per day over the course of the year.',
     graphic: 'lede'
   },
@@ -25,6 +25,8 @@ export const storyChapters = [
         <li>20 involved packages or food deliveries (3%)</li>
         <li>11 involved articles of clothing, mostly jackets, and 3 pieces of jewelry (2%)</li>
       </ul>
+      <br/><br/>
+      <p>Bigger glyphs on the map mean more repeat thefts at the same spot.</p>
     `,
     graphic: 'lede'
   },

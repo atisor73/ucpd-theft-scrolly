@@ -1,4 +1,6 @@
 <script>
+  import { fade } from 'svelte/transition';
+
   export let storyChapters = [];
   export let activeChapterId = 'intro';
   export let chapterRefs = [];
@@ -8,6 +10,7 @@
   export let sceneStats = {};
   export let loading = false;
   let visibleChapterStats = {};
+  let activeChapter = null;
 
   function emptyStats() {
     return {
@@ -23,8 +26,8 @@
       .filter((chapter) => chapter.sceneId)
       .map((chapter) => [chapter.id, sceneStats[chapter.sceneId] || emptyStats()])
   );
-  $: console.log('[StoryPanel] sceneStats.cars', sceneStats?.cars);
-  $: console.log('[StoryPanel] visibleChapterStats.cars', visibleChapterStats?.cars);
+  $: activeChapter =
+    storyChapters.find((chapter) => chapter.id === activeChapterId) || storyChapters[0] || null;
 
   function setChapterRef(node, index) {
     chapterRefs[index] = node;
@@ -88,73 +91,83 @@
     </p>
   </div>
 
-  {#each storyChapters as chapter, index}
-    <section
-      use:setChapterRef={index}
-      class:active={activeChapterId === chapter.id}
-      class="story-step"
-      data-chapter-id={chapter.id}
-    >
-      <div class="step-kicker">{chapter.kicker}</div>
-      <h2>{chapter.title}</h2>
-      {#if hasHtmlBody(chapter)}
-        <div class="story-body rich-text">
-          {@html chapter.body}
-        </div>
-      {:else}
-        <p>{chapter.body}</p>
-      {/if}
-
-      {#if chapter.graphic === 'stats'}
-        <div class="metric-grid">
-          <article>
-            <span>Building footprints</span>
-            <strong>{buildingFeaturesLength.toLocaleString()}</strong>
-          </article>
-          <article>
-            <span>Theft points</span>
-            <strong>{incidentsLength}</strong>
-          </article>
-        </div>
-      {/if}
-
-      {#if sceneFor(chapter) && !loading && hasStatsFor(chapter)}
-        {#key `${chapter.id}:${statsFor(chapter).count}:${statsFor(chapter).uniqueHotspots}:${statsFor(chapter).largestHotspotCount}:${statsFor(chapter).topHotspotName}`}
-          <div class="chart-card compact">
-            <div class="chart-title">{sceneFor(chapter)?.panelTitle || 'Category reports'}</div>
-            <div class="glyph-row" aria-hidden="true">
-              {#each sceneFor(chapter)?.previewGlyphs || [] as glyph, index}
-                <img
-                  class="glyph"
-                  class:hotspot={index === (sceneFor(chapter)?.previewGlyphs?.length || 1) - 1}
-                  src={glyph}
-                  alt=""
-                />
-              {/each}
-              {#if !(sceneFor(chapter)?.previewGlyphs?.length)}
-                <img class="glyph hotspot" src="/assets/hand1.svg" alt="" />
+  <div class="story-experience">
+    <div class="story-stage">
+      <div class="story-stage-frame" aria-live="polite">
+        {#if activeChapter}
+          {#key activeChapter.id}
+            <section class="story-step active" transition:fade={{ duration: 260 }}>
+              <div class="step-kicker">{activeChapter.kicker}</div>
+              <h2>{activeChapter.title}</h2>
+              {#if hasHtmlBody(activeChapter)}
+                <div class="story-body rich-text">
+                  {@html activeChapter.body}
+                </div>
+              {:else}
+                <p>{activeChapter.body}</p>
               {/if}
-            </div>
-            <div class="big-number">{statsFor(chapter).count}</div>
-            <div class="chart-caption">
-              {statsFor(chapter).uniqueHotspots} {sceneFor(chapter)?.uniqueLabel || 'unique locations'}
-            </div>
-            {#if statsFor(chapter).topHotspotName}
-              <div class="compare-line">
-                Top hotspot: <strong>{statsFor(chapter).topHotspotName}</strong>
-              </div>
-            {/if}
-            <div class="compare-line">
-              Largest hotspot: <strong>{statsFor(chapter).largestHotspotCount}</strong>
-            </div>
-            <div class="chart-caption">
-              Bigger glyphs on the map mean more repeat thefts at the same spot.
-            </div>
-          </div>
-        {/key}
-      {/if}
-    </section>
-  {/each}
+
+              {#if activeChapter.graphic === 'stats'}
+                <div class="metric-grid">
+                  <article>
+                    <span>Building footprints</span>
+                    <strong>{buildingFeaturesLength.toLocaleString()}</strong>
+                  </article>
+                  <article>
+                    <span>Theft points</span>
+                    <strong>{incidentsLength}</strong>
+                  </article>
+                </div>
+              {/if}
+
+              {#if sceneFor(activeChapter) && !loading && hasStatsFor(activeChapter)}
+                {#key `${activeChapter.id}:${statsFor(activeChapter).count}:${statsFor(activeChapter).uniqueHotspots}:${statsFor(activeChapter).largestHotspotCount}:${statsFor(activeChapter).topHotspotName}`}
+                  <div class="chart-card compact">
+                    <div class="chart-title">{sceneFor(activeChapter)?.panelTitle || 'Category reports'}</div>
+                    <div class="glyph-row" aria-hidden="true">
+                      {#each sceneFor(activeChapter)?.previewGlyphs || [] as glyph, index}
+                        <img
+                          class="glyph"
+                          class:hotspot={index === (sceneFor(activeChapter)?.previewGlyphs?.length || 1) - 1}
+                          src={glyph}
+                          alt=""
+                        />
+                      {/each}
+                      {#if !(sceneFor(activeChapter)?.previewGlyphs?.length)}
+                        <img class="glyph hotspot" src="/assets/hand1.svg" alt="" />
+                      {/if}
+                    </div>
+                    <div class="big-number">{statsFor(activeChapter).count}</div>
+                    <div class="chart-caption">
+                      {statsFor(activeChapter).uniqueHotspots} {sceneFor(activeChapter)?.uniqueLabel || 'unique locations'}
+                    </div>
+                    {#if statsFor(activeChapter).topHotspotName}
+                      <div class="compare-line">
+                        Top hotspot: <strong>{statsFor(activeChapter).topHotspotName}</strong>
+                      </div>
+                    {/if}
+                    <div class="compare-line">
+                      Largest hotspot: <strong>{statsFor(activeChapter).largestHotspotCount}</strong>
+                    </div>
+                  </div>
+                {/key}
+              {/if}
+            </section>
+          {/key}
+        {/if}
+      </div>
+    </div>
+
+    <div class="story-track" aria-hidden="true">
+      {#each storyChapters as chapter, index}
+        <section
+          use:setChapterRef={index}
+          class="story-trigger"
+          data-chapter-id={chapter.id}
+        ></section>
+      {/each}
+    </div>
+  </div>
 </aside>
 
 <style>
@@ -170,6 +183,25 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+  }
+
+  .story-experience {
+    position: relative;
+  }
+
+  .story-stage {
+    position: sticky;
+    top: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 1rem 0;
+    z-index: 1;
+  }
+
+  .story-stage-frame {
+    display: grid;
+    width: 100%;
   }
 
   .story-header h1,
@@ -204,6 +236,7 @@
   }
 
   .story-step {
+    grid-area: 1 / 1;
     max-width: 40rem;
     min-height: 88vh;
     margin: 0 auto;
@@ -222,6 +255,14 @@
   .story-step.active {
     opacity: 1;
     transform: translateY(0);
+  }
+
+  .story-track {
+    margin-top: -100vh;
+  }
+
+  .story-trigger {
+    min-height: 88vh;
   }
 
   .story-step h2 {
@@ -353,7 +394,19 @@
       margin-bottom: 4rem;
     }
 
+    .story-stage {
+      min-height: 72vh;
+    }
+
     .story-step {
+      min-height: 72vh;
+    }
+
+    .story-track {
+      margin-top: -72vh;
+    }
+
+    .story-trigger {
       min-height: 72vh;
     }
   }
