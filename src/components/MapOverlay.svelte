@@ -64,12 +64,13 @@
         class:aggregate-hand={hand.mode === 'aggregate'}
         class:merchandise-icon={hand.mode === 'merchandise'}
         class:category-icon={hand.mode === 'category-hotspot'}
+        class:persistent-intro-hand={hand.mode === 'persistent-intro'}
         class="walking-hand"
         src={hand.assetPath}
         alt=""
         on:mouseenter={() => showHandHover(hand)}
         on:mouseleave={clearHandHover}
-        style={`width:${hand.size}px; left:${hand.x - hand.size / 2}px; top:${hand.y - hand.size / 2}px; transform:rotate(${hand.rotation}deg); animation-duration:${hand.animationDurationMs || introHandLifetimeMs}ms; animation-delay:${hand.animationDelayMs || 0}ms; --hand-opacity:${hand.mode === 'aggregate' ? hand.opacity : 1};`}
+        style={`width:${hand.size}px; left:${hand.x - hand.size / 2}px; top:${hand.y - hand.size / 2}px; transform:rotate(${hand.rotation}deg); animation-duration:${hand.animationDurationMs || introHandLifetimeMs}ms; animation-delay:${hand.animationDelayMs || 0}ms; --hand-opacity:${hand.mode === 'aggregate' ? hand.opacity : 1}; --hand-rotation:${hand.rotation}deg;`}
       />
     {/each}
 
@@ -213,6 +214,11 @@
     cursor: help;
   }
 
+  .walking-hand.persistent-intro-hand {
+    animation-name: persistentIntroAppear;
+    animation-fill-mode: both;
+  }
+
   .merch-callout-anchor {
     position: absolute;
     left: 0;
@@ -347,6 +353,18 @@
 
     100% {
       opacity: 1;
+    }
+  }
+
+  @keyframes persistentIntroAppear {
+    0% {
+      opacity: 0;
+      transform: rotate(var(--hand-rotation, 0deg)) scale(0.84);
+    }
+
+    100% {
+      opacity: 0.94;
+      transform: rotate(var(--hand-rotation, 0deg)) scale(1);
     }
   }
 

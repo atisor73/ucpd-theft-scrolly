@@ -150,5 +150,13 @@ export const storyChapters = [
       'Within the remaining items, a few subcategories emerge: musical instruments appear five times, food-related thefts appear three times if restaurant cooking oil is included, and a strange concentrated run of 10 fire-hose-cap thefts all occurred between June 13 and June 16, 2025. The rest are mostly one-offs, including a dog, two guns, a shovel, a walker, a painting, keys, and even a glass jar.',
     graphic: 'hotspotPanel',
     sceneId: 'miscellaneous'
+  },
+  {
+    id: 'allReports',
+    kicker: 'Final View',
+    title: 'All reported thefts, accumulated across the year',
+    body:
+      'This final animation constructs the year’s reported thefts onto the map.',
+    graphic: 'lede'
   }
 ];

@@ -34,6 +34,8 @@
   const INTRO_TARGET_HANDS_PER_FRAME = 4;
   const INTRO_HAND_FRAME_MS = 500; //750;
   const INTRO_HAND_LIFETIME_MS = 300; //520;
+  const FINALE_FRAME_MS = 82;
+  const FINALE_HAND_STAGGER_MS = 18;
   const AGGREGATE_HAND_MIN_SIZE = 9;
   const AGGREGATE_HAND_MAX_SIZE = 30;
   const MERCHANDISE_ICON_MIN_SIZE = 15;
@@ -246,6 +248,7 @@
   let merchandiseHighlightBuildings = emptyFeatureCollection;
   let boundary = emptyFeatureCollection;
   let introHands = [];
+  let finaleHands = [];
   let aggregateHands = [];
   let merchandiseHands = [];
   let bikeCallouts = [];
@@ -322,6 +325,7 @@
           setupMapLayers();
           syncMapData();
           introTimeline = createIntroTimeline(loadedIncidents);
+          finaleHands = createFinaleHands(introTimeline);
           aggregateHands = createAggregateHands(loadedIncidents);
           merchandiseHands = createMerchandiseHands(loadedIncidents);
           bikeCallouts = createBikeCallouts(loadedIncidents);
@@ -642,6 +646,56 @@
         opacity: 1 //0.5 + scale * 0.38
       };
     });
+  }
+
+  function createFinaleHands(timeline) {
+    if (!timeline.length) {
+      return [];
+    }
+
+    const hotspotCounts = new Map();
+
+    timeline.forEach((group) => {
+      group.hands.forEach((hand) => {
+        if (!Number.isFinite(hand.longitude) || !Number.isFinite(hand.latitude)) {
+          return;
+        }
+
+        const roundedLongitude = Number(hand.longitude.toFixed(5));
+        const roundedLatitude = Number(hand.latitude.toFixed(5));
+        const key = `${roundedLatitude}|${roundedLongitude}`;
+        hotspotCounts.set(key, (hotspotCounts.get(key) || 0) + 1);
+      });
+    });
+
+    const maxCount = Math.max(...hotspotCounts.values(), 1);
+    const finalHands = [];
+    let globalFrameIndex = 0;
+
+    timeline.forEach((group) => {
+      group.hands.forEach((hand, index) => {
+        const withinFrameIndex = index % INTRO_TARGET_HANDS_PER_FRAME;
+        const frameIndex = Math.floor(index / INTRO_TARGET_HANDS_PER_FRAME);
+        const roundedLongitude = Number(hand.longitude.toFixed(5));
+        const roundedLatitude = Number(hand.latitude.toFixed(5));
+        const key = `${roundedLatitude}|${roundedLongitude}`;
+        const count = hotspotCounts.get(key) || 1;
+        const scale = Math.sqrt(count / maxCount);
+
+        finalHands.push({
+          ...hand,
+          size: AGGREGATE_HAND_MIN_SIZE + scale * (AGGREGATE_HAND_MAX_SIZE - AGGREGATE_HAND_MIN_SIZE),
+          mode: 'persistent-intro',
+          animationDurationMs: 420,
+          animationDelayMs:
+            (globalFrameIndex + frameIndex) * FINALE_FRAME_MS + withinFrameIndex * FINALE_HAND_STAGGER_MS
+        });
+      });
+
+      globalFrameIndex += group.frameCount || 1;
+    });
+
+    return finalHands;
   }
 
   function createMerchandiseHands(allIncidents) {
@@ -1068,6 +1122,12 @@
       return;
     }
 
+    if (activeHandScene === 'allReports') {
+      visibleHands = projectHandSet(finaleHands);
+      visibleCallouts = [];
+      return;
+    }
+
     if (activeHandScene === 'merchandise') {
       visibleHands = projectHandSet(merchandiseHands);
       visibleCallouts = projectOverlayCallouts(merchandiseCallouts);
@@ -1351,6 +1411,8 @@
         ? 'intro'
         : chapterId === 'buildings'
           ? 'aggregate'
+          : chapterId === 'allReports'
+            ? 'allReports'
           : chapterId === 'merchandise'
             ? 'merchandise'
             : HOTSPOT_SCENE_IDS.has(chapterId)
@@ -1361,6 +1423,7 @@
     const showIncidents =
       chapterId !== 'intro' &&
       chapterId !== 'buildings' &&
+      chapterId !== 'allReports' &&
       chapterId !== 'merchandise' &&
       !HOTSPOT_SCENE_IDS.has(chapterId);
     setLayerVisibility(LAYER_IDS.incidents, showIncidents);
@@ -1386,6 +1449,15 @@
       map.setFilter(LAYER_IDS.incidents, null);
       map.fitBounds(STUDY_BOUNDS_ARRAY, {
         padding: { top: 60, right: 60, bottom: 60, left: 60 },
+        duration: 900
+      });
+      return;
+    }
+
+    if (chapterId === 'allReports') {
+      map.setFilter(LAYER_IDS.incidents, null);
+      map.fitBounds(STUDY_BOUNDS_ARRAY, {
+        padding: { top: 48, right: 48, bottom: 48, left: 48 },
         duration: 900
       });
       return;
