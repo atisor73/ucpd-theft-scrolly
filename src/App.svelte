@@ -44,8 +44,8 @@
   const CAR_ICON_MAX_SIZE = 25;
   const BAG_ICON_MIN_SIZE = 13;
   const BAG_ICON_MAX_SIZE = 18;
-  const WALLET_ICON_MIN_SIZE = 13;
-  const WALLET_ICON_MAX_SIZE = 15;
+  const WALLET_ICON_MIN_SIZE = 18;
+  const WALLET_ICON_MAX_SIZE = 21;
   const TECH_ICON_MIN_SIZE = 15;
   const TECH_ICON_MAX_SIZE = 20;
   const PACKAGE_ICON_MIN_SIZE = 17;
@@ -56,10 +56,21 @@
   const TOOL_ICON_MAX_SIZE = 30;
   const MISC_ICON_MIN_SIZE = 16;
   const MISC_ICON_MAX_SIZE = 36;
+  const MISC_VIOLIN_ICON_MIN_SIZE = 22;
+  const MISC_VIOLIN_ICON_MAX_SIZE = 24;
+  const MISC_BURGER_ICON_MIN_SIZE = 26;
+  const MISC_BURGER_ICON_MAX_SIZE = 28;
+  const MISC_DOG_ICON_MIN_SIZE = 28;
+  const MISC_DOG_ICON_MAX_SIZE = 30;
+  const MISC_ASTERISK_ICON_MIN_SIZE = 17;
+  const MISC_ASTERISK_ICON_MAX_SIZE = 19;
   const MERCH_CALLOUT_BOX_WIDTH = 168;
   const MERCH_CALLOUT_BOX_HEIGHT = 76;
   const REGENSTEIN_ADDRESS_FRAGMENT = '1100 e. 57th st.';
   const jewelryPattern = /(jewel|ring|necklace|bracelet|earring|watch)/i;
+  const miscellaneousInstrumentPattern = /(musical instrument|violin|trumpet|saxophone)/i;
+  const miscellaneousFoodPattern = /(food|espresso|cooking oil|restaurant)/i;
+  const miscellaneousDogPattern = /\bdog\b/i;
   const merchandiseHotspotDefs = [
     {
       id: 'walgreens-plaza',
@@ -174,8 +185,7 @@
     },
     miscellaneous: {
       category: 'Miscellaneous',
-      assetPaths: handAssetPaths,
-      previewGlyphs: ['/assets/hand2.svg', '/assets/hand4.svg'],
+      previewGlyphs: ['/assets/violin.svg', '/assets/burger.svg', '/assets/dog.svg', '/assets/asterisk.svg'],
       panelTitle: 'Miscellaneous reports',
       uniqueLabel: 'unique miscellaneous locations',
       hotspotLabel: 'miscellaneous',
@@ -720,6 +730,24 @@
       return jewelryPattern.test(incident.itemStolen || '') ? '/assets/ring.svg' : '/assets/jacket.svg';
     }
 
+    if (sceneId === 'miscellaneous') {
+      const iconText = `${incident.itemStolen || ''} ${incident.comments || ''}`;
+
+      if (miscellaneousInstrumentPattern.test(iconText)) {
+        return '/assets/violin.svg';
+      }
+
+      if (miscellaneousFoodPattern.test(iconText)) {
+        return '/assets/burger.svg';
+      }
+
+      if (miscellaneousDogPattern.test(iconText)) {
+        return '/assets/dog.svg';
+      }
+
+      return '/assets/asterisk.svg';
+    }
+
     const assetPaths = scene.assetPaths?.length ? scene.assetPaths : handAssetPaths;
     const assetIndex = Math.min(
       assetPaths.length - 1,
@@ -727,6 +755,41 @@
     );
 
     return assetPaths[assetIndex] || assetPaths[0];
+  }
+
+  function sizeRangeForHotspotAsset(sceneId, scene, assetPath) {
+    if (sceneId !== 'miscellaneous') {
+      return {
+        minSize: scene.minSize,
+        maxSize: scene.maxSize
+      };
+    }
+
+    if (assetPath === '/assets/violin.svg') {
+      return {
+        minSize: MISC_VIOLIN_ICON_MIN_SIZE,
+        maxSize: MISC_VIOLIN_ICON_MAX_SIZE
+      };
+    }
+
+    if (assetPath === '/assets/burger.svg') {
+      return {
+        minSize: MISC_BURGER_ICON_MIN_SIZE,
+        maxSize: MISC_BURGER_ICON_MAX_SIZE
+      };
+    }
+
+    if (assetPath === '/assets/dog.svg') {
+      return {
+        minSize: MISC_DOG_ICON_MIN_SIZE,
+        maxSize: MISC_DOG_ICON_MAX_SIZE
+      };
+    }
+
+    return {
+      minSize: MISC_ASTERISK_ICON_MIN_SIZE,
+      maxSize: MISC_ASTERISK_ICON_MAX_SIZE
+    };
   }
 
   function createHotspotHands(allIncidents, sceneId, scene) {
@@ -742,11 +805,13 @@
       const hotspotSummary = hotspotSummaries.get(hotspotKey) || { count: 1, firstComment: '' };
       const count = hotspotSummary.count || 1;
       const scale = Math.sqrt(count / maxCount);
+      const assetPath = assetPathForHotspotIncident(sceneId, scene, incident, index);
+      const { minSize, maxSize } = sizeRangeForHotspotAsset(sceneId, scene, assetPath);
 
       return {
         id: `${sceneId}-${incident.id}-${index}`,
-        assetPath: assetPathForHotspotIncident(sceneId, scene, incident, index),
-        size: scene.minSize + scale * (scene.maxSize - scene.minSize),
+        assetPath,
+        size: minSize + scale * (maxSize - minSize),
         rotation: 0,
         animationDurationMs: 420,
         animationDelayMs: Math.round(stableUnit(`${sceneId}-delay-${incident.id}-${index}`) * 180),
@@ -1375,6 +1440,8 @@
   };
   $: incidentsGeoJson = incidentsToGeoJson(incidents);
   $: panelSceneStats = buildPanelSceneStats(incidents, PANEL_SCENES);
+  $: console.log('App panelSceneStats', panelSceneStats);
+  $: console.log('App merchandise stats', panelSceneStats.merchandise);
   $: if (map && map.isStyleLoaded()) {
     syncMapData();
   }

@@ -8,6 +8,16 @@
   export let hotspotScenes = {};
   export let sceneStats = {};
   let derivedSceneStats = {};
+  let visibleChapterStats = {};
+
+  function emptyStats() {
+    return {
+      count: 0,
+      uniqueHotspots: 0,
+      largestHotspotCount: 0,
+      topHotspotName: ''
+    };
+  }
 
   function buildHotspotSummaries(filteredIncidents) {
     const hotspotSummaries = new Map();
@@ -61,6 +71,14 @@
   }
 
   $: derivedSceneStats = buildSceneStats(incidents, hotspotScenes);
+  $: visibleChapterStats = Object.fromEntries(
+    storyChapters
+      .filter((chapter) => chapter.sceneId)
+      .map((chapter) => [
+        chapter.id,
+        derivedSceneStats[chapter.sceneId] || sceneStats[chapter.sceneId] || emptyStats()
+      ])
+  );
 
   function setChapterRef(node, index) {
     chapterRefs[index] = node;
@@ -83,15 +101,7 @@
   }
 
   function statsFor(chapter) {
-    return (
-      derivedSceneStats[chapter.sceneId] ||
-      sceneStats[chapter.sceneId] || {
-        count: 0,
-        uniqueHotspots: 0,
-        largestHotspotCount: 0,
-        topHotspotName: ''
-      }
-    );
+    return visibleChapterStats[chapter.id] || emptyStats();
   }
 </script>
 
@@ -159,37 +169,39 @@
       {/if}
 
       {#if sceneFor(chapter)}
-        <div class="chart-card compact">
-          <div class="chart-title">{sceneFor(chapter)?.panelTitle || 'Category reports'}</div>
-          <div class="glyph-row" aria-hidden="true">
-            {#each sceneFor(chapter)?.previewGlyphs || [] as glyph, index}
-              <img
-                class="glyph"
-                class:hotspot={index === (sceneFor(chapter)?.previewGlyphs?.length || 1) - 1}
-                src={glyph}
-                alt=""
-              />
-            {/each}
-            {#if !(sceneFor(chapter)?.previewGlyphs?.length)}
-              <img class="glyph hotspot" src="/assets/hand1.svg" alt="" />
-            {/if}
-          </div>
-          <div class="big-number">{statsFor(chapter).count}</div>
-          <div class="chart-caption">
-            {statsFor(chapter).uniqueHotspots} {sceneFor(chapter)?.uniqueLabel || 'unique locations'}
-          </div>
-          {#if statsFor(chapter).topHotspotName}
-            <div class="compare-line">
-              Top hotspot: <strong>{statsFor(chapter).topHotspotName}</strong>
+        {#key `${chapter.id}:${statsFor(chapter).count}:${statsFor(chapter).uniqueHotspots}:${statsFor(chapter).largestHotspotCount}:${statsFor(chapter).topHotspotName}`}
+          <div class="chart-card compact">
+            <div class="chart-title">{sceneFor(chapter)?.panelTitle || 'Category reports'}</div>
+            <div class="glyph-row" aria-hidden="true">
+              {#each sceneFor(chapter)?.previewGlyphs || [] as glyph, index}
+                <img
+                  class="glyph"
+                  class:hotspot={index === (sceneFor(chapter)?.previewGlyphs?.length || 1) - 1}
+                  src={glyph}
+                  alt=""
+                />
+              {/each}
+              {#if !(sceneFor(chapter)?.previewGlyphs?.length)}
+                <img class="glyph hotspot" src="/assets/hand1.svg" alt="" />
+              {/if}
             </div>
-          {/if}
-          <div class="compare-line">
-            Largest hotspot: <strong>{statsFor(chapter).largestHotspotCount}</strong>
+            <div class="big-number">{statsFor(chapter).count}</div>
+            <div class="chart-caption">
+              {statsFor(chapter).uniqueHotspots} {sceneFor(chapter)?.uniqueLabel || 'unique locations'}
+            </div>
+            {#if statsFor(chapter).topHotspotName}
+              <div class="compare-line">
+                Top hotspot: <strong>{statsFor(chapter).topHotspotName}</strong>
+              </div>
+            {/if}
+            <div class="compare-line">
+              Largest hotspot: <strong>{statsFor(chapter).largestHotspotCount}</strong>
+            </div>
+            <div class="chart-caption">
+              Bigger glyphs on the map mean more repeat thefts at the same spot.
+            </div>
           </div>
-          <div class="chart-caption">
-            Bigger glyphs on the map mean more repeat thefts at the same spot.
-          </div>
-        </div>
+        {/key}
       {/if}
     </section>
   {/each}
@@ -372,7 +384,7 @@
     width: 2.5rem;
     height: 2.5rem;
     opacity: 1;
-    filter: drop-shadow(0 0 0.6px rgba(255, 255, 255, 0.98));
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.98));
   }
 
   .glyph.hotspot {
